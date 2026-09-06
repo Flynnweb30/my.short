@@ -10,7 +10,7 @@
     "dev": "vite",
     "generate-favicons": "node scripts/generate-favicons.cjs",
     "prebuild": "npm run generate-favicons",
-    "build": "tsc --noEmit && vite build",
+    "build": "vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },

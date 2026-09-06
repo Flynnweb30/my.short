@@ -2,8 +2,18 @@ services:
   - type: web
     name: my-short-v2
     env: node
+    region: singapore
+    plan: free
+    branch: main
     buildCommand: npm install && npm run build
+    startCommand: node server.js
     staticPublishPath: dist
     envVars:
       - key: NODE_VERSION
         value: 20.18.0
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+    healthCheckPath: /
+    autoDeploy: true
