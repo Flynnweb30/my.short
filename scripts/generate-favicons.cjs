@@ -1,6 +1,7 @@
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const outputDir = 'public';
 
@@ -65,23 +66,30 @@ sharp(svgBuffer)
   .then(() => console.log('✅ Generated apple-touch-icon.png'))
   .catch(err => console.error('❌ Failed to generate apple-touch-icon.png:', err));
 
-// Generate a simple 64x64 favicon.ico using sharp (convert from SVG)
-sharp(svgBuffer)
-  .resize(64, 64)
-  .toFormat('ico')
-  .toFile(path.join(outputDir, 'favicon.ico'))
-  .then(() => console.log('✅ Generated favicon.ico'))
-  .catch(err => console.error('❌ Failed to generate favicon.ico:', err));
+// Generate favicon.ico using a different approach
+// Create a 16x16 and 32x32 PNG and then convert to ICO using a different method
+console.log('⏳ Generating favicon.ico...');
+
+// First generate a 16x16 and 32x32 PNG
+Promise.all([
+  sharp(svgBuffer).resize(16, 16).png().toBuffer(),
+  sharp(svgBuffer).resize(32, 32).png().toBuffer(),
+  sharp(svgBuffer).resize(48, 48).png().toBuffer()
+]).then(async ([size16, size32, size48]) => {
+  try {
+    // Write the icon as PNG first
+    const icoPath = path.join(outputDir, 'favicon.ico');
+    
+    // Use the 32x32 PNG as the favicon.ico (browsers will handle it)
+    fs.writeFileSync(icoPath, size32);
+    console.log('✅ Generated favicon.ico (32x32 PNG format - supported by all modern browsers)');
+  } catch (err) {
+    console.error('❌ Failed to generate favicon.ico:', err);
+  }
+}).catch(err => {
+  console.error('❌ Failed to generate favicon.ico:', err);
+});
 
 console.log('\n📁 All favicon files generated in /public folder');
-console.log('📝 Add the following to your index.html <head>:');
-console.log(`
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png" />
-  <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#0F172A" />
-`);
+console.log('📝 Note: favicon.ico is saved as a PNG file with .ico extension');
+console.log('📝 This is supported by all modern browsers including Chrome, Firefox, Safari, and Edge.');
