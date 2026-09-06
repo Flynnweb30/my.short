@@ -162,7 +162,7 @@ export const FeaturesPage: React.FC<FeaturesPageProps> = ({
 
           <div className="rounded-2xl overflow-hidden border border-white/15 shadow-2xl relative aspect-video lg:aspect-auto lg:h-72 bg-slate-950">
             <img
-              src="/src/assets/images/analytics-telemetry-1788666233677.avif"
+              src="/src/assets/images/analytics-telemetry-1788666233677.avif.jpg"
               alt="Analytics and Telemetry Dashboard Visualization"
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"

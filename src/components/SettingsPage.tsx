@@ -683,7 +683,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
           <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg relative aspect-video sm:aspect-auto sm:h-44 bg-slate-950">
             <img
-              src="/src/assets/images/custom-domain-dns-1788666220212.avif"
+              src="/src/assets/images/custom-domain-dns-1788666220212.avif.jpg"
               alt="Custom Domain DNS Architecture Diagram"
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
