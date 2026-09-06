@@ -1,39 +1,83 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import {
+  getFirestore,
+  doc,
+  getDocFromServer,
+  FirestoreError,
+} from 'firebase/firestore';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCMlfbCNIWm-sp0ROB35A7ASDJm14idQpc",
-  authDomain: "my-shortener-v2.firebaseapp.com",
-  projectId: "my-shortener-v2",
-  storageBucket: "my-shortener-v2.firebasestorage.app",
-  messagingSenderId: "714255205377",
-  appId: "1:714255205377:web:a19537d8b396da51a8ec00",
-  measurementId: "G-MEVXZBGMQ8"
-};
+import firebaseConfig from '../../firebase-applet-config.json';
 
+/**
+ * Firebase application
+ */
 const app = initializeApp(firebaseConfig);
 
+/**
+ * Firebase Authentication
+ */
 export const auth = getAuth(app);
-export const db = getFirestore(app);
 
-export async function testConnection() {
+/**
+ * Firestore
+ *
+ * firebase-applet-config.json specifies:
+ * "firestoreDatabaseId": "(default)"
+ *
+ * This connects to the default Firestore database.
+ */
+export const db = getFirestore(
+  app,
+  firebaseConfig.firestoreDatabaseId || '(default)'
+);
+
+/**
+ * Optional Firestore connectivity test.
+ *
+ * This function is NOT automatically executed.
+ * Call it manually when you actually need to test Firebase.
+ */
+export async function testConnection(): Promise<boolean> {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log('Firebase connection successful.');
+    await getDocFromServer(
+      doc(db, '__system', 'connection-test')
+    );
+
+    console.info('Firebase Firestore connection successful.');
+    return true;
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message.toLowerCase().includes('client is offline')) {
-        console.error(
-          'Firebase client is offline. Check your Firebase configuration and network connection.'
-        );
-      } else {
-        console.error('Firebase connection test failed:', error);
-      }
+    const firebaseError = error as FirestoreError;
+
+    if (firebaseError?.code === 'not-found') {
+      console.error(
+        'Firestore database not found. Make sure the "(default)" Firestore database has been created in Firebase Console.'
+      );
+    } else if (
+      firebaseError?.code === 'permission-denied'
+    ) {
+      console.error(
+        'Firestore connection reached Firebase, but the request was denied by Firestore Security Rules.'
+      );
+    } else if (
+      firebaseError?.code === 'unavailable'
+    ) {
+      console.error(
+        'Firestore is temporarily unavailable or the browser is offline.'
+      );
     } else {
-      console.error('Firebase connection test failed:', error);
+      console.error(
+        'Firestore connection test failed:',
+        error
+      );
     }
+
+    return false;
   }
 }
 
-testConnection();
+/**
+ * Export the Firebase application in case another
+ * module needs it.
+ */
+export { app };

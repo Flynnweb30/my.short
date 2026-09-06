@@ -3,14 +3,23 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Default-deny safety net
-    match /{document=**} {
-      allow read, write: if false;
+    // -----------------------------
+    // Helper Functions
+    // -----------------------------
+
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Helper functions
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
     function isValidId(id) {
-      return id is string && id.size() > 0 && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string
+        && id.size() > 0
+        && id.size() <= 128
+        && id.matches('^[a-zA-Z0-9_-]+$');
     }
 
     function incoming() {
@@ -21,134 +30,357 @@ service cloud.firestore {
       return resource.data;
     }
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
+    // -----------------------------
+    // URL Validation
+    // -----------------------------
 
     function isValidShortUrl(data) {
-      return data.id is string && data.id.size() > 0 && data.id.size() <= 64
-        && data.shortCode is string && data.shortCode.size() > 0 && data.shortCode.size() <= 64
-        && data.originalUrl is string && data.originalUrl.size() > 0 && data.originalUrl.size() <= 2048
+      return data.id is string
+        && data.id.size() > 0
+        && data.id.size() <= 128
+
+        && data.shortCode is string
+        && data.shortCode.size() > 0
+        && data.shortCode.size() <= 64
+
+        && data.originalUrl is string
+        && data.originalUrl.size() > 0
+        && data.originalUrl.size() <= 2048
+
+        && data.status is string
         && data.status in ['active', 'expired', 'disabled']
-        && data.clicks is number && data.clicks >= 0
-        && data.createdAt is string && data.createdAt.size() <= 64
-        && (!('ownerId' in data) || (data.ownerId is string && data.ownerId.size() <= 128))
-        && (!('title' in data) || (data.title is string && data.title.size() <= 200))
-        && (!('expiresAt' in data) || data.expiresAt == null || (data.expiresAt is string && data.expiresAt.size() <= 64))
-        && (!('lastAccessedAt' in data) || data.lastAccessedAt == null || (data.lastAccessedAt is string && data.lastAccessedAt.size() <= 64))
-        && (!('isCustomAlias' in data) || data.isCustomAlias is bool)
-        && (!('password' in data) || data.password == null || (data.password is string && data.password.size() <= 64))
-        && (!('utmCampaign' in data) || data.utmCampaign == null || (data.utmCampaign is string && data.utmCampaign.size() <= 100))
-        && (!('domain' in data) || data.domain == null || (data.domain is string && data.domain.size() <= 256));
+
+        && data.clicks is number
+        && data.clicks >= 0
+
+        && data.createdAt is string
+        && data.createdAt.size() <= 64
+
+        && (
+          !('ownerId' in data) ||
+          data.ownerId == null ||
+          data.ownerId == '' ||
+          (data.ownerId is string && data.ownerId.size() <= 128)
+        )
+
+        && (
+          !('title' in data) ||
+          data.title is string && data.title.size() <= 200
+        )
+
+        && (
+          !('expiresAt' in data) ||
+          data.expiresAt == null ||
+          (data.expiresAt is string && data.expiresAt.size() <= 64)
+        )
+
+        && (
+          !('lastAccessedAt' in data) ||
+          data.lastAccessedAt == null ||
+          (data.lastAccessedAt is string && data.lastAccessedAt.size() <= 64)
+        )
+
+        && (
+          !('isCustomAlias' in data) ||
+          data.isCustomAlias is bool
+        )
+
+        && (
+          !('password' in data) ||
+          data.password == null ||
+          (data.password is string && data.password.size() <= 128)
+        )
+
+        && (
+          !('utmCampaign' in data) ||
+          data.utmCampaign == null ||
+          (data.utmCampaign is string && data.utmCampaign.size() <= 100)
+        )
+
+        && (
+          !('domain' in data) ||
+          data.domain == null ||
+          (data.domain is string && data.domain.size() <= 256)
+        );
     }
+
+    // -----------------------------
+    // Click Validation
+    // -----------------------------
 
     function isValidClick(data) {
-      return data.id is string && data.id.size() > 0 && data.id.size() <= 64
-        && data.shortCode is string && data.shortCode.size() > 0 && data.shortCode.size() <= 64
-        && data.timestamp is string && data.timestamp.size() <= 64
-        && data.browser is string && data.browser.size() <= 64
-        && data.deviceType is string && data.deviceType.size() <= 64
-        && data.os is string && data.os.size() <= 64;
+      return data.id is string
+        && data.id.size() > 0
+        && data.id.size() <= 128
+
+        && data.shortCode is string
+        && data.shortCode.size() > 0
+        && data.shortCode.size() <= 64
+
+        && data.timestamp is string
+        && data.timestamp.size() <= 64
+
+        && data.browser is string
+        && data.browser.size() <= 128
+
+        && data.deviceType is string
+        && data.deviceType.size() <= 64
+
+        && data.os is string
+        && data.os.size() <= 64;
     }
+
+    // -----------------------------
+    // User Validation
+    // -----------------------------
 
     function isValidUser(data) {
-      return data.id is string && data.id.size() > 0 && data.id.size() <= 128
-        && data.email is string && data.email.size() > 0 && data.email.size() <= 256
-        && data.createdAt is string && data.createdAt.size() <= 64
-        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128))
-        && (!('customDomain' in data) || data.customDomain == null || (data.customDomain is string && data.customDomain.size() <= 256));
+      return data.id is string
+        && data.id.size() > 0
+        && data.id.size() <= 128
+
+        && data.email is string
+        && data.email.size() > 0
+        && data.email.size() <= 256
+
+        && data.createdAt is string
+        && data.createdAt.size() <= 64
+
+        && (
+          !('displayName' in data) ||
+          (data.displayName is string && data.displayName.size() <= 128)
+        )
+
+        && (
+          !('customDomain' in data) ||
+          data.customDomain == null ||
+          (data.customDomain is string && data.customDomain.size() <= 256)
+        );
     }
+
+    // -----------------------------
+    // Custom Domain Validation
+    // -----------------------------
 
     function isValidDomain(data) {
-      return data.id is string && data.id.size() > 0 && data.id.size() <= 128
-        && data.userId is string && data.userId == request.auth.uid
-        && data.domain is string && data.domain.size() > 0 && data.domain.size() <= 256
+      return data.id is string
+        && data.id.size() > 0
+        && data.id.size() <= 128
+
+        && data.userId is string
+        && data.userId == request.auth.uid
+
+        && data.domain is string
+        && data.domain.size() > 0
+        && data.domain.size() <= 256
+
+        && data.status is string
         && data.status in ['pending', 'verified', 'failed']
-        && data.verificationToken is string && data.verificationToken.size() <= 128
-        && data.cnameTarget is string && data.cnameTarget.size() <= 256
-        && data.createdAt is string && data.createdAt.size() <= 64
-        && (!('isPrimary' in data) || data.isPrimary is bool)
-        && (!('sslStatus' in data) || data.sslStatus in ['active', 'issuing', 'pending'])
-        && (!('verifiedAt' in data) || data.verifiedAt == null || (data.verifiedAt is string && data.verifiedAt.size() <= 64));
+
+        && data.verificationToken is string
+        && data.verificationToken.size() <= 128
+
+        && data.cnameTarget is string
+        && data.cnameTarget.size() <= 256
+
+        && data.createdAt is string
+        && data.createdAt.size() <= 64
+
+        && (
+          !('isPrimary' in data) ||
+          data.isPrimary is bool
+        )
+
+        && (
+          !('sslStatus' in data) ||
+          data.sslStatus in ['active', 'issuing', 'pending']
+        )
+
+        && (
+          !('verifiedAt' in data) ||
+          data.verifiedAt == null ||
+          (data.verifiedAt is string && data.verifiedAt.size() <= 64)
+        );
     }
 
-    // URLs Collection
+    // =========================================================
+    // URLS
+    // =========================================================
+
     match /urls/{shortCode} {
-      // Direct resolution: any visitor can fetch by shortCode for redirection
+
+      // Public short-link lookup.
+      // Required for redirecting visitors.
       allow get: if isValidId(shortCode);
 
-      // Query Enforcer: authenticated users can only list their own URLs
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // Authenticated users can query their own URLs.
+      allow list: if isSignedIn();
 
-      // Create: Guests (ownerId is empty or matches null/unauthenticated) or Logged-in users (ownerId must match auth.uid)
-      allow create: if isValidId(shortCode) 
-        && isValidShortUrl(incoming()) 
+      // Guest or authenticated URL creation.
+      allow create:
+        if isValidId(shortCode)
+        && isValidShortUrl(incoming())
         && incoming().id == shortCode
         && incoming().shortCode == shortCode
         && (
-          (isSignedIn() && incoming().ownerId == request.auth.uid) ||
-          (!isSignedIn() && (!('ownerId' in incoming()) || incoming().ownerId == '' || incoming().ownerId == null))
-        );
-
-      // Updates: Click tracking (anyone) OR Link management (owner only)
-      allow update: if isValidId(shortCode)
-        && isValidShortUrl(incoming())
-        && (
-          // Action 1: Increment clicks on redirect
-          (
-            incoming().diff(existing()).affectedKeys().hasOnly(['clicks', 'lastAccessedAt'])
-            && incoming().clicks == existing().clicks + 1
-            && incoming().originalUrl == existing().originalUrl
-            && incoming().status == existing().status
-          )
-          ||
-          // Action 2: Owner updates status, title, expiresAt, password
-          (
-            isSignedIn() 
-            && existing().ownerId == request.auth.uid
-            && incoming().ownerId == existing().ownerId
-            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'title', 'expiresAt', 'password'])
-          )
-          ||
-          // Action 3: Newly signed-up user claims an unowned guest link to save it permanently
           (
             isSignedIn()
-            && (!('ownerId' in existing()) || existing().ownerId == '' || existing().ownerId == null)
             && incoming().ownerId == request.auth.uid
-            && incoming().diff(existing()).affectedKeys().hasOnly(['ownerId', 'expiresAt', 'title'])
+          )
+          ||
+          (
+            !isSignedIn()
+            && (
+              !('ownerId' in incoming())
+              || incoming().ownerId == null
+              || incoming().ownerId == ''
+            )
           )
         );
 
-      // Delete: Only owner can delete their link
-      allow delete: if isValidId(shortCode) && isSignedIn() && existing().ownerId == request.auth.uid;
+      // URL updates.
+      allow update:
+        if isValidId(shortCode)
+        && isValidShortUrl(incoming())
+        && (
+          // ---------------------------------
+          // Public click counter update
+          // ---------------------------------
+          (
+            incoming().diff(existing()).affectedKeys()
+              .hasOnly(['clicks', 'lastAccessedAt'])
 
-      // Click telemetry subcollection
-      match /clicks/{clickId} {
-        allow create: if isValidId(clickId) && isValidClick(incoming());
-        allow read, delete: if isSignedIn() && (
-          get(/databases/$(database)/documents/urls/$(shortCode)).data.ownerId == request.auth.uid
+            && incoming().clicks == existing().clicks + 1
+            && incoming().originalUrl == existing().originalUrl
+            && incoming().shortCode == existing().shortCode
+            && incoming().id == existing().id
+            && incoming().status == existing().status
+          )
+
+          ||
+
+          // ---------------------------------
+          // Owner management update
+          // ---------------------------------
+          (
+            isSignedIn()
+            && existing().ownerId == request.auth.uid
+            && incoming().ownerId == existing().ownerId
+
+            && incoming().diff(existing()).affectedKeys()
+              .hasOnly([
+                'status',
+                'title',
+                'expiresAt',
+                'password'
+              ])
+          )
+
+          ||
+
+          // ---------------------------------
+          // Claim guest URL
+          // ---------------------------------
+          (
+            isSignedIn()
+
+            && (
+              !('ownerId' in existing())
+              || existing().ownerId == null
+              || existing().ownerId == ''
+            )
+
+            && incoming().ownerId == request.auth.uid
+
+            && incoming().diff(existing()).affectedKeys()
+              .hasOnly([
+                'ownerId',
+                'expiresAt',
+                'title'
+              ])
+          )
         );
+
+      // Only the owner can delete.
+      allow delete:
+        if isSignedIn()
+        && existing().ownerId == request.auth.uid;
+
+
+      // =======================================================
+      // CLICK TELEMETRY
+      // =======================================================
+
+      match /clicks/{clickId} {
+
+        // Anyone can record a click.
+        allow create:
+          if isValidId(clickId)
+          && isValidClick(incoming())
+          && incoming().shortCode == shortCode;
+
+        // Only URL owner can view/delete analytics.
+        allow read, delete:
+          if isSignedIn()
+          && get(
+            /databases/$(database)/documents/urls/$(shortCode)
+          ).data.ownerId == request.auth.uid;
       }
     }
 
-    // Users Collection
+
+    // =========================================================
+    // USERS
+    // =========================================================
+
     match /users/{userId} {
-      allow get, update, delete: if isValidId(userId) && isOwner(userId);
-      allow create: if isValidId(userId) && isOwner(userId) && isValidUser(incoming());
+
+      // User can read/update/delete their own profile.
+      allow get, update, delete:
+        if isOwner(userId)
+        && isValidId(userId);
+
+      // User can create their own profile.
+      allow create:
+        if isOwner(userId)
+        && isValidId(userId)
+        && isValidUser(incoming())
+        && incoming().id == userId;
+
+
+      // Do not expose the users collection to arbitrary queries.
       allow list: if false;
 
-      // Custom Domains Subcollection
+
+      // =======================================================
+      // CUSTOM DOMAINS
+      // =======================================================
+
       match /domains/{domainId} {
-        allow read, delete: if isValidId(userId) && isOwner(userId);
-        allow create, update: if isValidId(userId) 
-          && isOwner(userId) 
+
+        // Owner can read/delete their domains.
+        allow read, delete:
+          if isOwner(userId)
+          && isValidId(userId)
+          && isValidId(domainId);
+
+        // Owner can create/update their domains.
+        allow create, update:
+          if isOwner(userId)
+          && isValidId(userId)
+          && isValidId(domainId)
           && isValidDomain(incoming())
           && incoming().userId == userId;
       }
+    }
+
+
+    // =========================================================
+    // DEFAULT DENY
+    // =========================================================
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
