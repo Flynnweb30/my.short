@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { resolveShortUrl, ResolveResult } from '../services/urlService';
 import {
-  ExternalLink,
   AlertTriangle,
   Clock,
   Ban,
@@ -11,7 +10,6 @@ import {
   Sparkles,
   Lock,
   KeyRound,
-  ShieldCheck,
 } from 'lucide-react';
 
 interface RedirectHandlerProps {

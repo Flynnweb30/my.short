@@ -128,7 +128,7 @@ export function getClientMetadata(shortCode: string): ClickLog {
 /**
  * Helper to get clean branded URL (e.g. "my.short/abcd")
  */
-export function getDisplayShortUrl(shortCode: string, customDomain?: string): string {
+export function getDisplayShortUrl(shortCode: string, customDomain?: string | null): string {
   const domain = customDomain?.trim() || 'my.short';
   return `${domain}/${shortCode}`;
 }

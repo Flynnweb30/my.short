@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { X, Download, Copy, Check, ExternalLink, QrCode as QrIcon } from 'lucide-react';
+import { X, Download, Copy, Check, QrCode as QrIcon } from 'lucide-react';
 
 interface QrCodeModalProps {
   shortUrl: string;
@@ -11,7 +11,6 @@ interface QrCodeModalProps {
 export const QrCodeModal: React.FC<QrCodeModalProps> = ({ shortUrl, title, onClose }) => {
   const [dataUrl, setDataUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     QRCode.toDataURL(

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
 import { ShortenerSection } from './components/ShortenerSection';
@@ -94,7 +94,7 @@ function MainApp() {
     setQrModal({ url, title });
   };
 
-  const handleUrlCreated = (newUrl: ShortUrl) => {
+  const handleUrlCreated = () => {
     setRefreshKey((prev) => prev + 1);
   };
 

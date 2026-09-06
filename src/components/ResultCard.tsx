@@ -39,7 +39,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({
   const [copiedType, setCopiedType] = useState<'branded' | 'full' | 'code' | null>(null);
 
   // Clean branded short URL representation (e.g. "my.short/abcd" or "link.brand.com/abcd")
-  const brandedShortUrl = getDisplayShortUrl(shortUrl.shortCode, shortUrl.domain);
+  const brandedShortUrl = getDisplayShortUrl(shortUrl.shortCode, shortUrl.domain || undefined);
   const fullBrandedUrl = `https://${brandedShortUrl}`;
   // Reachable live browser link for local sandbox testing
   const liveBrowserUrl = getReachableShortUrl(shortUrl.shortCode);

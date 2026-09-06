@@ -2,14 +2,9 @@ import React, { useState } from 'react';
 import {
   Check,
   Sparkles,
-  ArrowRight,
-  HelpCircle,
   ChevronDown,
   ChevronUp,
-  Globe,
-  Zap,
   Shield,
-  Layers,
 } from 'lucide-react';
 import { AuthMode } from '../types';
 
