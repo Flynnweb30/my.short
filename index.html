@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>my.short - Fast &amp; Reliable URL Shortener</title>
+    <meta name="description" content="Fast, reliable URL shortener with real-time analytics, custom aliases, and link management." />
+    <meta property="og:title" content="my.short - Fast &amp; Reliable URL Shortener" />
+    <meta property="og:description" content="Fast, reliable URL shortener with real-time analytics, custom aliases, and link management." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // Gracefully prevent benign Vite WebSocket disconnect warnings in sandboxed preview
+      window.addEventListener('unhandledrejection', function (event) {
+        if (
+          event &&
+          event.reason &&
+          (String(event.reason).includes('WebSocket') ||
+            String(event.reason?.message).includes('WebSocket'))
+        ) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

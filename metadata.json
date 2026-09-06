@@ -1,0 +1,6 @@
+{
+  "name": "my.short",
+  "description": "Fast, reliable URL shortener with real-time analytics, custom aliases, and link management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,230 @@
+{
+  "entities": {
+    "ShortUrl": {
+      "title": "ShortUrl",
+      "description": "A shortened URL record mapping a unique code to an original destination URL.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique short code or custom alias (document ID).",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 64
+        },
+        "shortCode": {
+          "type": "string",
+          "description": "The unique short code identifier.",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 64
+        },
+        "originalUrl": {
+          "type": "string",
+          "description": "Original long destination URL.",
+          "maxLength": 2048
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "User ID of the creator if authenticated, or empty for guests.",
+          "maxLength": 128
+        },
+        "title": {
+          "type": "string",
+          "description": "Optional human-readable title for the link.",
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when the short URL was created.",
+          "maxLength": 64
+        },
+        "expiresAt": {
+          "type": "string",
+          "description": "Optional ISO timestamp when the link expires.",
+          "maxLength": 64
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the link.",
+          "enum": ["active", "expired", "disabled"]
+        },
+        "clicks": {
+          "type": "number",
+          "description": "Total number of times the short URL was accessed."
+        },
+        "lastAccessedAt": {
+          "type": "string",
+          "description": "ISO timestamp when the link was last accessed.",
+          "maxLength": 64
+        },
+        "isCustomAlias": {
+          "type": "boolean",
+          "description": "Whether a custom alias was specified."
+        },
+        "password": {
+          "type": "string",
+          "description": "Optional password / PIN protecting access to the redirect.",
+          "maxLength": 64
+        },
+        "utmCampaign": {
+          "type": "string",
+          "description": "Optional UTM campaign tag name.",
+          "maxLength": 100
+        }
+      },
+      "required": ["id", "shortCode", "originalUrl", "status", "clicks", "createdAt"]
+    },
+    "ClickLog": {
+      "title": "ClickLog",
+      "description": "Individual click telemetry record storing device and browser analytics.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique click document ID."
+        },
+        "shortCode": {
+          "type": "string",
+          "description": "The shortCode associated with this click."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO timestamp when the click occurred."
+        },
+        "browser": {
+          "type": "string",
+          "description": "Detected web browser (e.g., Chrome, Safari, Firefox, Edge)."
+        },
+        "deviceType": {
+          "type": "string",
+          "description": "Device category: Desktop, Mobile, or Tablet."
+        },
+        "os": {
+          "type": "string",
+          "description": "Operating system (e.g., Windows, macOS, iOS, Android, Linux)."
+        },
+        "referer": {
+          "type": "string",
+          "description": "Referrer source or direct navigation."
+        },
+        "language": {
+          "type": "string",
+          "description": "Browser primary language."
+        },
+        "timeZone": {
+          "type": "string",
+          "description": "Client time zone identifier."
+        }
+      },
+      "required": ["id", "shortCode", "timestamp", "browser", "deviceType", "os"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account profile and link preferences.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "User ID matching request.auth.uid.",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address.",
+          "maxLength": 256
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of the user.",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when the user registered.",
+          "maxLength": 64
+        },
+        "customDomain": {
+          "type": "string",
+          "description": "Primary custom domain selected by the user.",
+          "maxLength": 256
+        }
+      },
+      "required": ["id", "email", "createdAt"]
+    },
+    "CustomDomain": {
+      "title": "CustomDomain",
+      "description": "Custom branded vanity domain record with DNS verification instructions and status.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Domain slug identifier.",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID.",
+          "maxLength": 128
+        },
+        "domain": {
+          "type": "string",
+          "description": "Clean domain hostname.",
+          "maxLength": 256
+        },
+        "status": {
+          "type": "string",
+          "description": "DNS verification status.",
+          "enum": ["pending", "verified", "failed"]
+        },
+        "verificationToken": {
+          "type": "string",
+          "description": "Unique challenge token for TXT verification.",
+          "maxLength": 128
+        },
+        "cnameTarget": {
+          "type": "string",
+          "description": "Target hostname for CNAME record.",
+          "maxLength": 256
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when domain was registered.",
+          "maxLength": 64
+        },
+        "verifiedAt": {
+          "type": "string",
+          "description": "Optional ISO timestamp when verification passed.",
+          "maxLength": 64
+        },
+        "isPrimary": {
+          "type": "boolean",
+          "description": "Whether this domain is currently default for new links."
+        },
+        "sslStatus": {
+          "type": "string",
+          "description": "SSL certificate state.",
+          "enum": ["active", "issuing", "pending"]
+        }
+      },
+      "required": ["id", "userId", "domain", "status", "verificationToken", "cnameTarget", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/urls/{shortCode}": {
+      "schema": "ShortUrl",
+      "description": "Public lookup collection for short URL redirections and user link management."
+    },
+    "/urls/{shortCode}/clicks/{clickId}": {
+      "schema": "ClickLog",
+      "description": "Detailed click telemetry logs for the short URL."
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Private user profile documents accessible only by the owner."
+    },
+    "/users/{userId}/domains/{domainId}": {
+      "schema": "CustomDomain",
+      "description": "User's custom domain configurations and DNS verification status."
+    }
+  }
+}
