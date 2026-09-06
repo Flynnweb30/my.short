@@ -1,46 +1,21 @@
-import express from "express";
-import path from "path";
-import { createServer as createViteServer } from "vite";
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-async function startServer() {
-  const app = express();
-  // Support Render.com dynamic PORT environment variable or default to 3000
-  const PORT = Number(process.env.PORT) || 3000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-  app.use(express.json());
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-  // API health check for Render.com and uptime monitors
-  app.get("/api/health", (req, res) => {
-    res.json({
-      status: "ok",
-      service: "my.short",
-      domain: "my.short",
-      port: PORT,
-      timestamp: new Date().toISOString()
-    });
-  });
+// Serve static files from the dist directory
+app.use(express.static(path.join(__dirname, 'dist')));
 
-  // Vite development middleware vs production static serving
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: {
-        middlewareMode: true,
-        hmr: false, // Disables WebSocket HMR to eliminate WebSocket closed rejections in sandbox
-      },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-  }
+// Handle all routes by serving the index.html (for SPA)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`my.short server running on http://0.0.0.0:${PORT}`);
-  });
-}
-
-startServer();
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

@@ -1,11 +1,9 @@
 services:
   - type: web
-    name: myshort-url-shortener
-    runtime: node
-    plan: free
+    name: my-short-v2
+    env: node
     buildCommand: npm install && npm run build
-    startCommand: npm start
-    healthCheckPath: /api/health
+    staticPublishPath: dist
     envVars:
-      - key: NODE_ENV
-        value: production
+      - key: NODE_VERSION
+        value: 18.0.0
