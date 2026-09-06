@@ -1,7 +1,6 @@
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
 const outputDir = 'public';
 
@@ -45,12 +44,13 @@ console.log('✅ Generated favicon.svg');
 const sizes = [16, 32, 192, 512];
 const svgBuffer = Buffer.from(svgContent);
 
-sizes.forEach(size => {
+// Process each size
+const promises = sizes.map(size => {
   const filename = size === 192 ? 'android-chrome-192x192.png' :
                    size === 512 ? 'favicon-512x512.png' :
                    `favicon-${size}x${size}.png`;
   
-  sharp(svgBuffer)
+  return sharp(svgBuffer)
     .resize(size, size)
     .png()
     .toFile(path.join(outputDir, filename))
@@ -59,37 +59,28 @@ sizes.forEach(size => {
 });
 
 // Generate apple-touch-icon (180x180)
-sharp(svgBuffer)
-  .resize(180, 180)
-  .png()
-  .toFile(path.join(outputDir, 'apple-touch-icon.png'))
-  .then(() => console.log('✅ Generated apple-touch-icon.png'))
-  .catch(err => console.error('❌ Failed to generate apple-touch-icon.png:', err));
+promises.push(
+  sharp(svgBuffer)
+    .resize(180, 180)
+    .png()
+    .toFile(path.join(outputDir, 'apple-touch-icon.png'))
+    .then(() => console.log('✅ Generated apple-touch-icon.png'))
+    .catch(err => console.error('❌ Failed to generate apple-touch-icon.png:', err))
+);
 
-// Generate favicon.ico using a different approach
-// Create a 16x16 and 32x32 PNG and then convert to ICO using a different method
-console.log('⏳ Generating favicon.ico...');
+// Generate favicon.ico as a PNG (modern browsers accept PNG as .ico)
+promises.push(
+  sharp(svgBuffer)
+    .resize(32, 32)
+    .png()
+    .toFile(path.join(outputDir, 'favicon.ico'))
+    .then(() => console.log('✅ Generated favicon.ico (as 32x32 PNG)'))
+    .catch(err => console.error('❌ Failed to generate favicon.ico:', err))
+);
 
-// First generate a 16x16 and 32x32 PNG
-Promise.all([
-  sharp(svgBuffer).resize(16, 16).png().toBuffer(),
-  sharp(svgBuffer).resize(32, 32).png().toBuffer(),
-  sharp(svgBuffer).resize(48, 48).png().toBuffer()
-]).then(async ([size16, size32, size48]) => {
-  try {
-    // Write the icon as PNG first
-    const icoPath = path.join(outputDir, 'favicon.ico');
-    
-    // Use the 32x32 PNG as the favicon.ico (browsers will handle it)
-    fs.writeFileSync(icoPath, size32);
-    console.log('✅ Generated favicon.ico (32x32 PNG format - supported by all modern browsers)');
-  } catch (err) {
-    console.error('❌ Failed to generate favicon.ico:', err);
-  }
-}).catch(err => {
-  console.error('❌ Failed to generate favicon.ico:', err);
+// Wait for all promises to complete
+Promise.all(promises).then(() => {
+  console.log('\n📁 All favicon files generated in /public folder');
+  console.log('📝 Note: favicon.ico is saved as a PNG file with .ico extension');
+  console.log('📝 This is supported by all modern browsers (Chrome, Firefox, Safari, Edge).');
 });
-
-console.log('\n📁 All favicon files generated in /public folder');
-console.log('📝 Note: favicon.ico is saved as a PNG file with .ico extension');
-console.log('📝 This is supported by all modern browsers including Chrome, Firefox, Safari, and Edge.');
