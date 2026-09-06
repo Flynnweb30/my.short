@@ -10,12 +10,18 @@ import {
   Filter,
   MousePointerClick,
   Clock,
+  Sparkles,
   QrCode,
   CheckCircle2,
+  AlertCircle,
   AlertTriangle,
   Lock,
   ArrowRight,
   ShieldCheck,
+  BarChart3,
+  Sliders,
+  History,
+  CheckCircle,
   Download,
   Smartphone,
   Tablet,
@@ -25,6 +31,7 @@ import {
   Tag,
   RefreshCw,
   Layers,
+  ChevronDown,
   X,
 } from 'lucide-react';
 import { ShortUrl, AuthMode, ClickLog } from '../types';
@@ -63,6 +70,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   const { user } = useAuth();
   const [links, setLinks] = useState<ShortUrl[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,6 +98,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
   const fetchLinks = async () => {
     setLoading(true);
+    setError(null);
     try {
       if (user) {
         // Automatically claim any guest links from this session if present
@@ -103,7 +112,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         setLinks([]);
       }
     } catch (err: any) {
-      console.error('Unable to load your links:', err);
+      setError('Unable to load your links. Please try again.');
     } finally {
       setLoading(false);
     }

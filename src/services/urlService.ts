@@ -8,6 +8,7 @@ import {
   query,
   where,
   getDocs,
+  limit,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';

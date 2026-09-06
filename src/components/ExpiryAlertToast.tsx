@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
+  AlertTriangle,
   Clock,
   ShieldCheck,
   X,
+  ArrowRight,
+  Sparkles,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';

@@ -1,222 +1,135 @@
-import { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { Header } from './components/Header';
-import { ShortenerSection } from './components/ShortenerSection';
-import { FeaturesSection } from './components/FeaturesSection';
-import { CtaBanner } from './components/CtaBanner';
-import { UserDashboard } from './components/UserDashboard';
-import { SettingsPage } from './components/SettingsPage';
-import { FeaturesPage } from './components/FeaturesPage';
-import { PricingPage } from './components/PricingPage';
-import { Footer } from './components/Footer';
-import { AuthModal } from './components/AuthModal';
-import { QrCodeModal } from './components/QrCodeModal';
-import { RedirectHandler } from './components/RedirectHandler';
-import { ExpiryAlertToast } from './components/ExpiryAlertToast';
-import { AuthMode, ShortUrl, AppTab } from './types';
+import React, { useState, useEffect } from 'react';
 
-function MainApp() {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<AppTab>('shorten');
-  const [authModalMode, setAuthModalMode] = useState<AuthMode | null>(null);
-  const [qrModal, setQrModal] = useState<{ url: string; title?: string } | null>(null);
-  const [redirectShortCode, setRedirectShortCode] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+interface LinkItem {
+  id: string;
+  shortCode: string;
+  originalUrl: string;
+  clicks: number;
+  lastVisited?: string;
+}
 
-  // Check initial URL pathname for shortcode redirection (e.g. /aB72x9)
+export function App() {
+  const [links, setLinks] = useState<LinkItem[]>([
+    { id: '1', shortCode: 'demo-link', originalUrl: 'https://example.com', clicks: 124 }
+  ]);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch initial links and real-time telemetry state from backend
   useEffect(() => {
-    const parseCurrentPath = () => {
-      // 1. Check search parameters (?c=... or ?code=...)
-      const searchParams = new URLSearchParams(window.location.search);
-      const queryCode = searchParams.get('code') || searchParams.get('c') || searchParams.get('link');
-      if (queryCode && queryCode.trim()) {
-        setRedirectShortCode(queryCode.trim());
-        return;
-      }
-
-      // 2. Check hash route (e.g. #/xyz or #pricing)
-      const hash = window.location.hash.replace(/^#\/?/, '').trim();
-      if (hash === 'features' || hash === 'pricing' || hash === 'settings' || hash === 'links') {
-        setActiveTab(hash as AppTab);
-        return;
-      }
-      if (hash && !hash.includes('/') && !hash.includes('?') && hash.length <= 32) {
-        setRedirectShortCode(hash);
-        return;
-      }
-
-      // 3. Check pathname (e.g. /xyz)
-      const rawPath = window.location.pathname.replace(/^\/+/, '').trim();
-      const firstSegment = rawPath.split('/')[0];
-      // Check if path matches application tabs
-      if (firstSegment === 'features') {
-        setActiveTab('features');
-        return;
-      }
-      if (firstSegment === 'pricing') {
-        setActiveTab('pricing');
-        return;
-      }
-      if (firstSegment === 'settings') {
-        setActiveTab('settings');
-        return;
-      }
-      if (firstSegment === 'links') {
-        setActiveTab('links');
-        return;
-      }
-
-      // Exclude static assets or internal paths
-      if (!firstSegment || firstSegment.includes('.') || firstSegment === 'api' || firstSegment === 'dist') {
-        setRedirectShortCode(null);
-        return;
-      }
-      setRedirectShortCode(firstSegment);
-    };
-
-    parseCurrentPath();
-
-    const handlePopState = () => {
-      parseCurrentPath();
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    fetchLinks();
   }, []);
 
-  const handleGoHome = () => {
-    window.history.pushState({}, '', '/');
-    setRedirectShortCode(null);
-    setActiveTab('shorten');
+  const fetchLinks = async () => {
+    try {
+      const response = await fetch('/api/links');
+      if (response.ok) {
+        const data = await response.json();
+        setLinks(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch centralized link data:', err);
+    }
   };
 
-  const handleOpenQr = (url: string, title?: string) => {
-    setQrModal({ url, title });
-  };
+  // Real visitor click telemetry handler using fetch
+  const handleLinkClick = async (e: React.MouseEvent<HTMLAnchorElement>, link: LinkItem) => {
+    e.preventDefault();
+    setLoadingId(link.id);
+    setError(null);
 
-  const handleUrlCreated = () => {
-    setRefreshKey((prev) => prev + 1);
-  };
+    const telemetryPayload = {
+      shortCode: link.shortCode,
+      timestamp: new Date().toISOString(),
+      referrer: document.referrer || 'direct',
+      userAgent: navigator.userAgent,
+    };
 
-  // If visiting /:shortCode, render dedicated redirection screen
-  if (redirectShortCode) {
-    return (
-      <RedirectHandler
-        shortCode={redirectShortCode}
-        onGoHome={handleGoHome}
-      />
-    );
-  }
+    try {
+      // Send real-time telemetry and increment click counter centrally
+      const response = await fetch(`/api/track/${link.shortCode}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(telemetryPayload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Telemetry tracking failed to record real visitor event.');
+      }
+
+      const result = await response.json();
+
+      // Update local state to reflect centralized count
+      setLinks(prevLinks =>
+        prevLinks.map(l => (l.id === link.id ? { ...l, clicks: result.clicks ?? l.clicks + 1 } : l))
+      );
+
+      // Navigate to destination URL after successful telemetry logging
+      window.location.href = link.originalUrl;
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while processing the click.');
+      setLoadingId(null);
+      // Fallback navigation if telemetry request fails
+      window.location.href = link.originalUrl;
+    }
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0F172A] text-slate-100 selection:bg-indigo-500 selection:text-white font-sans antialiased relative overflow-x-hidden">
-      {/* Frosted Glass Ambient Blur Orbs */}
-      <div className="fixed top-[-100px] left-[-100px] w-[500px] h-[500px] bg-indigo-600/25 rounded-full blur-[120px] pointer-events-none z-0" />
-      <div className="fixed bottom-[-100px] right-[-100px] w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[140px] pointer-events-none z-0" />
-      <div className="fixed top-1/2 left-1/3 -translate-y-1/2 w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[150px] pointer-events-none z-0" />
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-start p-4 sm:p-8 font-sans">
+      <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-6 sm:p-8">
+        <header className="mb-6 border-b border-slate-800 pb-4">
+          <h1 className="text-2xl font-bold tracking-tight text-white">Centralized Telemetry Dashboard</h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Tracking real-time visitor click events and link performance.
+          </p>
+        </header>
 
-      {/* Navigation Header */}
-      <Header
-        activeTab={activeTab}
-        onSelectTab={(tab) => setActiveTab(tab)}
-        onOpenAuth={(mode) => setAuthModalMode(mode)}
-      />
-
-      {/* Main Content Area */}
-      <main className="flex-1 relative z-10">
-        {activeTab === 'shorten' && (
-          <>
-            {/* Hero & Shortener Input */}
-            <ShortenerSection
-              onUrlCreated={handleUrlCreated}
-              onOpenQr={handleOpenQr}
-              onTriggerAuth={(mode) => setAuthModalMode(mode)}
-              onViewDashboard={() => setActiveTab('links')}
-            />
-
-            {/* Why Choose my.short Feature Cards */}
-            <FeaturesSection />
-
-            {/* Call to Action Banner */}
-            <CtaBanner
-              onGetStarted={() => setAuthModalMode('signup')}
-              isLoggedIn={Boolean(user)}
-            />
-          </>
+        {error && (
+          <div className="mb-4 p-3 bg-red-950/50 border border-red-800 text-red-200 rounded-lg text-sm">
+            {error}
+          </div>
         )}
 
-        {activeTab === 'links' && (
-          /* User Member Dashboard (or Guest Upgrade View) */
-          <UserDashboard
-            key={refreshKey}
-            onOpenQr={handleOpenQr}
-            onNavigateHome={() => setActiveTab('shorten')}
-            onTriggerAuth={(mode = 'signup') => setAuthModalMode(mode)}
-            onNavigateSettings={() => setActiveTab('settings')}
-          />
-        )}
+        <div className="space-y-4">
+          {links.map(link => (
+            <div
+              key={link.id}
+              className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-slate-800/50 border border-slate-700/60 rounded-xl gap-4 hover:border-slate-600 transition-colors"
+            >
+              <div className="space-y-1 overflow-hidden">
+                <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-800/50">
+                  /{link.shortCode}
+                </span>
+                <p className="text-sm text-slate-300 truncate max-w-md">{link.originalUrl}</p>
+              </div>
 
-        {activeTab === 'settings' && (
-          /* Custom Domain Settings & Verification Interface */
-          <SettingsPage
-            onTriggerAuth={(mode = 'signup') => setAuthModalMode(mode)}
-            onNavigateTab={(tab) => setActiveTab(tab)}
-          />
-        )}
+              <div className="flex items-center justify-between w-full sm:w-auto gap-4">
+                <div className="text-right">
+                  <span className="text-lg font-bold text-white">{link.clicks}</span>
+                  <span className="text-xs text-slate-400 block">Real Clicks</span>
+                </div>
 
-        {activeTab === 'features' && (
-          /* Comprehensive Features Page with Illustration */
-          <FeaturesPage
-            onNavigateHome={() => setActiveTab('shorten')}
-            onTriggerAuth={(mode = 'signup') => setAuthModalMode(mode)}
-          />
-        )}
-
-        {activeTab === 'pricing' && (
-          /* Pricing Page with Cloud Infrastructure diagram and FAQs */
-          <PricingPage
-            onTriggerAuth={(mode = 'signup') => setAuthModalMode(mode)}
-            onNavigateTab={(tab) => setActiveTab(tab)}
-          />
-        )}
-      </main>
-
-      {/* Link Expiry Alert Toast: Small, unobtrusive alert 24h before custom-alias link expires */}
-      <ExpiryAlertToast
-        onViewDashboard={() => setActiveTab('links')}
-        onLinkUpdated={() => setRefreshKey((prev) => prev + 1)}
-      />
-
-      {/* Footer */}
-      <Footer onNavigateTab={(tab) => setActiveTab(tab)} />
-
-      {/* Authentication Modal */}
-      {authModalMode && (
-        <AuthModal
-          initialMode={authModalMode}
-          onClose={() => setAuthModalMode(null)}
-          onSuccess={() => {
-            setRefreshKey((prev) => prev + 1);
-          }}
-        />
-      )}
-
-      {/* QR Code Modal */}
-      {qrModal && (
-        <QrCodeModal
-          shortUrl={qrModal.url}
-          title={qrModal.title}
-          onClose={() => setQrModal(null)}
-        />
-      )}
+                <a
+                  href={link.originalUrl}
+                  onClick={(e) => handleLinkClick(e, link)}
+                  disabled={loadingId === link.id}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                    loadingId === link.id
+                      ? 'bg-indigo-600/50 cursor-wait text-white'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20'
+                  }`}
+                >
+                  {loadingId === link.id ? 'Tracking...' : 'Visit Link'}
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-export default function App() {
-  return (
-    <AuthProvider>
-      <MainApp />
-    </AuthProvider>
-  );
-}
+export default App;

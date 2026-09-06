@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import { AuthMode } from '../types';
 import { SignInView } from './Auth/SignInView';
 import { SignUpView } from './Auth/SignUpView';
@@ -93,3 +93,4 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
     </div>
   );
 };
+

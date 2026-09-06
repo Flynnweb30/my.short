@@ -2,9 +2,14 @@ import React, { useState } from 'react';
 import {
   Check,
   Sparkles,
+  ArrowRight,
+  HelpCircle,
   ChevronDown,
   ChevronUp,
+  Globe,
+  Zap,
   Shield,
+  Layers,
 } from 'lucide-react';
 import { AuthMode } from '../types';
 
@@ -189,7 +194,7 @@ export const PricingPage: React.FC<PricingPageProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
           <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg relative aspect-video sm:aspect-auto sm:h-52 bg-slate-950">
             <img
-              src="/src/assets/images/pricing-cloud-plan-1788666247878.avif.jpg"
+              src="/src/assets/images/pricing-cloud-plan-1788666247878.avif"
               alt="Enterprise Cloud Plan Architecture Diagram"
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"

@@ -7,6 +7,10 @@ import {
   Layers,
   Lock,
   Globe,
+  Sliders,
+  Zap,
+  Tag,
+  Settings,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { AuthMode, AppTab } from '../types';
@@ -225,3 +229,4 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenAu
     </header>
   );
 };
+

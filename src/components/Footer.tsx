@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link2 } from 'lucide-react';
+import { Link2, Shield, Heart } from 'lucide-react';
 import { AppTab } from '../types';
 
 interface FooterProps {

@@ -1,27 +1,20 @@
-import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import {defineConfig} from 'vite';
 
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-  server: {
-    port: 3000,
-    open: true,
-  },
-  build: {
-    outDir: 'dist',
-    sourcemap: false,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-        },
+export default defineConfig(() => {
+  return {
+    plugins: [react(), tailwindcss()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
       },
     },
-  },
+    server: {
+      // Disable WebSocket HMR to prevent "WebSocket closed without opened" errors in sandbox
+      hmr: false,
+      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
+  };
 });
