@@ -9,6 +9,15 @@ if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
 }
 
+// Check if sharp is available
+try {
+  require.resolve('sharp');
+} catch (e) {
+  console.warn('⚠️ Sharp is not installed. Skipping favicon generation.');
+  console.warn('To generate favicons, run: npm install --save-dev sharp');
+  process.exit(0);
+}
+
 // SVG content for the favicon
 const svgContent = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
