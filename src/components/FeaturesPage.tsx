@@ -37,7 +37,7 @@ export const FeaturesPage: React.FC<FeaturesPageProps> = ({
       icon: Globe,
       color: 'from-indigo-500 to-blue-600',
       description:
-        'Eliminate generic short links. Route all traffic through your own branded domain (e.g. link.yourcompany.com) with automatic Let’s Encrypt SSL certificates and instantaneous DNS verification.',
+        'Eliminate generic short links. Route all traffic through your own branded domain (e.g. link.yourcompany.com) with automatic Let\'s Encrypt SSL certificates and instantaneous DNS verification.',
       bullets: [
         'Automatic CNAME & TXT verification via Google Cloud DNS',
         'Auto-provisioned TLS certificates renewed every 90 days',
@@ -162,7 +162,7 @@ export const FeaturesPage: React.FC<FeaturesPageProps> = ({
 
           <div className="rounded-2xl overflow-hidden border border-white/15 shadow-2xl relative aspect-video lg:aspect-auto lg:h-72 bg-slate-950">
             <img
-              src="/src/assets/images/analytics_telemetry_1788666233677.jpg"
+              src="/src/assets/images/analytics-telemetry-1788666233677.avif"
               alt="Analytics and Telemetry Dashboard Visualization"
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
