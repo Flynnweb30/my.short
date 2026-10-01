@@ -1,56 +1,131 @@
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { ClickAnalytics, UrlModel } from '../types';
+﻿import { ShortUrl, ClickLog } from '../types';
+
+export function getDisplayShortUrl(shortCode: string, customDomain?: string | null): string {
+  const host = customDomain && customDomain !== 'my.short' ? customDomain : 'my.short';
+  return `${host}/${shortCode}`;
+}
+
+export function getReachableShortUrl(shortCode: string): string {
+  return `${window.location.origin}/r/${shortCode}`;
+}
 
 export const analyticsService = {
-  // Fetch raw analytics array for charts
-  async getUrlAnalytics(urlId: string): Promise<ClickAnalytics[]> {
-    const q = query(collection(db, 'clicks'), where('urlId', '==', urlId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClickAnalytics));
-  },
+  computeAggregates(urls: ShortUrl[], clicks: ClickLog[]) {
+    const totalClicks = urls.reduce((acc, u) => acc + (u.clicks || 0), 0);
+    const totalUniqueVisitors = urls.reduce((acc, u) => acc + (u.uniqueVisitors || 0), 0);
 
-  // Safely reduce aggregate totals for Top Level Dashboard displays
-  async getUserTotalAnalytics(userId: string, urls: UrlModel[]) {
-     let totalClicks = 0;
-     let totalUniqueVisitors = 0;
+    const countryMap: Record<string, { count: number; countryCode: string; name: string }> = {};
+    const timezoneMap: Record<string, number> = {};
+    const sourceMap: Record<string, number> = {};
+    const mediumMap: Record<string, number> = {};
+    const campaignMap: Record<string, number> = {};
+    const deviceMap: Record<string, number> = { Desktop: 0, Mobile: 0, Tablet: 0 };
+    const browserMap: Record<string, number> = {};
 
-     urls.forEach(url => {
-         totalClicks += url.clicks || 0;
-         totalUniqueVisitors += url.uniqueVisitors || 0;
-     });
+    clicks.forEach((c) => {
+      const countryName = c.country || 'Unknown';
+      if (!countryMap[countryName]) {
+        countryMap[countryName] = { count: 0, countryCode: c.countryCode || 'GL', name: countryName };
+      }
+      countryMap[countryName].count += 1;
 
-     return { totalClicks, totalUniqueVisitors };
-  },
+      if (c.timeZone) {
+        timezoneMap[c.timeZone] = (timezoneMap[c.timeZone] || 0) + 1;
+      }
 
-  // Grouping method designed for rendering synchronized click/unique charts
-  groupClicksByDate(clicks: ClickAnalytics[]) {
-    const data: Record<string, { clicks: number, unique: number }> = {};
-    
-    clicks.forEach(click => {
-       const dateObj = click.timestamp && (click.timestamp as any).toDate 
-            ? (click.timestamp as any).toDate() 
-            : new Date(click.timestamp);
-            
-       if (isNaN(dateObj.getTime())) return;
+      const src = c.utmSource || (c.referrer && c.referrer !== 'Direct' ? new URL(c.referrer).hostname : 'Direct');
+      sourceMap[src] = (sourceMap[src] || 0) + 1;
 
-       const dateStr = dateObj.toISOString().split('T')[0];
-       
-       if (!data[dateStr]) {
-           data[dateStr] = { clicks: 0, unique: 0 };
-       }
-       
-       data[dateStr].clicks += 1;
-       
-       if (click.isUnique) {
-           data[dateStr].unique += 1;
-       }
+      if (c.utmMedium) {
+        mediumMap[c.utmMedium] = (mediumMap[c.utmMedium] || 0) + 1;
+      }
+      if (c.utmCampaign) {
+        campaignMap[c.utmCampaign] = (campaignMap[c.utmCampaign] || 0) + 1;
+      }
+
+      if (c.deviceType) {
+        deviceMap[c.deviceType] = (deviceMap[c.deviceType] || 0) + 1;
+      }
+      if (c.browser) {
+        browserMap[c.browser] = (browserMap[c.browser] || 0) + 1;
+      }
     });
 
-    return Object.keys(data).sort().map(date => ({
-        date,
-        clicks: data[date].clicks,
-        uniqueVisitors: data[date].unique
-    }));
-  }
+    return {
+      totalClicks,
+      totalUniqueVisitors,
+      countries: Object.values(countryMap).sort((a, b) => b.count - a.count),
+      timezones: Object.entries(timezoneMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count),
+      sources: Object.entries(sourceMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count),
+      mediums: Object.entries(mediumMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count),
+      campaigns: Object.entries(campaignMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count),
+      devices: deviceMap,
+      browsers: Object.entries(browserMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count),
+    };
+  },
+
+  exportClicksToCsv(clicks: ClickLog[], filename = 'myshort-telemetry.csv') {
+    if (clicks.length === 0) {
+      alert('No telemetry click events to export yet.');
+      return;
+    }
+
+    const headers = [
+      'Event ID',
+      'Short Code',
+      'Original Destination',
+      'Timestamp (ISO)',
+      'Unique Visitor',
+      'Device Type',
+      'Browser',
+      'Operating System',
+      'Country',
+      'Timezone',
+      'Referrer',
+      'UTM Source',
+      'UTM Medium',
+      'UTM Campaign',
+      'UTM Content',
+      'Visitor ID',
+    ];
+
+    const rows = clicks.map((c) => [
+      `"${c.id}"`,
+      `"${c.shortCode}"`,
+      `"${c.originalUrl || ''}"`,
+      `"${c.timestamp}"`,
+      c.isUnique ? 'Yes' : 'No',
+      `"${c.deviceType}"`,
+      `"${c.browser}"`,
+      `"${c.os}"`,
+      `"${c.country || ''}"`,
+      `"${c.timeZone}"`,
+      `"${c.referrer}"`,
+      `"${c.utmSource || ''}"`,
+      `"${c.utmMedium || ''}"`,
+      `"${c.utmCampaign || ''}"`,
+      `"${c.utmContent || ''}"`,
+      `"${c.visitorId}"`,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  },
 };

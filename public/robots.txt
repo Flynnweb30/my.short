@@ -1,0 +1,6 @@
+﻿User-agent: *
+Allow: /
+Disallow: /r/
+Disallow: /api/
+
+Sitemap: https://my.short/sitemap.xml
