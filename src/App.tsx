@@ -1,7 +1,7 @@
 ﻿import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { AppTab, AuthMode, ShortUrl, UtmParams } from './types';
+import { AppTab, AuthMode, UtmParams } from './types';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { ShortenerSection } from './components/ShortenerSection';
@@ -29,14 +29,8 @@ function MainApp() {
     url: '',
   });
 
-  const [utmPrefillUrl, setUtmPrefillUrl] = useState<string>('');
-
   const handleOpenAuth = (mode: AuthMode = 'signin') => {
     setAuthModal({ open: true, mode });
-  };
-
-  const handleShortenUtmUrl = (url: string, utm: UtmParams) => {
-    setActiveTab('shorten');
   };
 
   return (
@@ -71,10 +65,7 @@ function MainApp() {
 
         {activeTab === 'utm' && (
           <div className="py-10 px-4">
-            <UtmBuilder
-              initialUrl={utmPrefillUrl}
-              onShortenUtmUrl={handleShortenUtmUrl}
-            />
+            <UtmBuilder onShortenUtmUrl={(_url: string, _utm: UtmParams) => setActiveTab('shorten')} />
           </div>
         )}
 

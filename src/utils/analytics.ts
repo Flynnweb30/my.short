@@ -29,48 +29,31 @@ export const analyticsService = {
       }
       countryMap[countryName].count += 1;
 
-      if (c.timeZone) {
-        timezoneMap[c.timeZone] = (timezoneMap[c.timeZone] || 0) + 1;
-      }
+      if (c.timeZone) timezoneMap[c.timeZone] = (timezoneMap[c.timeZone] || 0) + 1;
 
-      const src = c.utmSource || (c.referrer && c.referrer !== 'Direct' ? new URL(c.referrer).hostname : 'Direct');
+      let src = 'Direct';
+      if (c.utmSource) src = c.utmSource;
+      else if (c.referrer && c.referrer !== 'Direct') {
+        try { src = new URL(c.referrer).hostname; } catch { src = c.referrer; }
+      }
       sourceMap[src] = (sourceMap[src] || 0) + 1;
 
-      if (c.utmMedium) {
-        mediumMap[c.utmMedium] = (mediumMap[c.utmMedium] || 0) + 1;
-      }
-      if (c.utmCampaign) {
-        campaignMap[c.utmCampaign] = (campaignMap[c.utmCampaign] || 0) + 1;
-      }
-
-      if (c.deviceType) {
-        deviceMap[c.deviceType] = (deviceMap[c.deviceType] || 0) + 1;
-      }
-      if (c.browser) {
-        browserMap[c.browser] = (browserMap[c.browser] || 0) + 1;
-      }
+      if (c.utmMedium) mediumMap[c.utmMedium] = (mediumMap[c.utmMedium] || 0) + 1;
+      if (c.utmCampaign) campaignMap[c.utmCampaign] = (campaignMap[c.utmCampaign] || 0) + 1;
+      if (c.deviceType) deviceMap[c.deviceType] = (deviceMap[c.deviceType] || 0) + 1;
+      if (c.browser) browserMap[c.browser] = (browserMap[c.browser] || 0) + 1;
     });
 
     return {
       totalClicks,
       totalUniqueVisitors,
       countries: Object.values(countryMap).sort((a, b) => b.count - a.count),
-      timezones: Object.entries(timezoneMap)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count),
-      sources: Object.entries(sourceMap)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count),
-      mediums: Object.entries(mediumMap)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count),
-      campaigns: Object.entries(campaignMap)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count),
+      timezones: Object.entries(timezoneMap).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+      sources: Object.entries(sourceMap).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+      mediums: Object.entries(mediumMap).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+      campaigns: Object.entries(campaignMap).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
       devices: deviceMap,
-      browsers: Object.entries(browserMap)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count),
+      browsers: Object.entries(browserMap).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
     };
   },
 
@@ -79,45 +62,14 @@ export const analyticsService = {
       alert('No telemetry click events to export yet.');
       return;
     }
-
-    const headers = [
-      'Event ID',
-      'Short Code',
-      'Original Destination',
-      'Timestamp (ISO)',
-      'Unique Visitor',
-      'Device Type',
-      'Browser',
-      'Operating System',
-      'Country',
-      'Timezone',
-      'Referrer',
-      'UTM Source',
-      'UTM Medium',
-      'UTM Campaign',
-      'UTM Content',
-      'Visitor ID',
-    ];
-
+    const headers = ['Event ID','Short Code','Original Destination','Timestamp (ISO)','Unique Visitor','Device Type','Browser','Operating System','Country','Timezone','Referrer','UTM Source','UTM Medium','UTM Campaign','UTM Content','Visitor ID'];
     const rows = clicks.map((c) => [
-      `"${c.id}"`,
-      `"${c.shortCode}"`,
-      `"${c.originalUrl || ''}"`,
-      `"${c.timestamp}"`,
-      c.isUnique ? 'Yes' : 'No',
-      `"${c.deviceType}"`,
-      `"${c.browser}"`,
-      `"${c.os}"`,
-      `"${c.country || ''}"`,
-      `"${c.timeZone}"`,
-      `"${c.referrer}"`,
-      `"${c.utmSource || ''}"`,
-      `"${c.utmMedium || ''}"`,
-      `"${c.utmCampaign || ''}"`,
-      `"${c.utmContent || ''}"`,
-      `"${c.visitorId}"`,
+      `"${c.id}"`,`"${c.shortCode}"`,`"${c.originalUrl || ''}"`,`"${c.timestamp}"`,
+      c.isUnique ? 'Yes' : 'No',`"${c.deviceType}"`,`"${c.browser}"`,`"${c.os}"`,
+      `"${c.country || ''}"`,`"${c.timeZone}"`,`"${c.referrer}"`,
+      `"${c.utmSource || ''}"`,`"${c.utmMedium || ''}"`,`"${c.utmCampaign || ''}"`,
+      `"${c.utmContent || ''}"`,`"${c.visitorId}"`,
     ]);
-
     const csvContent = [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);

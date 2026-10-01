@@ -1,14 +1,5 @@
 ﻿import React from 'react';
-import {
-  Link2,
-  LogOut,
-  User,
-  Sparkles,
-  Layers,
-  Lock,
-  Globe,
-  Tag,
-} from 'lucide-react';
+import { Link2, LogOut, User, Sparkles, Layers, Lock, Globe, Tag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { AuthMode, AppTab } from '../types';
 
@@ -25,10 +16,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenAu
   return (
     <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-white/10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        
         <div className="flex items-center gap-6">
           <button
-            id="brand-logo-button"
             onClick={() => onSelectTab('shorten')}
             className="flex items-center gap-2.5 group cursor-pointer focus:outline-none"
           >
@@ -41,62 +30,33 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenAu
           </button>
 
           <nav className="hidden md:flex items-center gap-1">
-            <button
-              onClick={() => onSelectTab('shorten')}
-              className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${
-                activeTab === 'shorten' ? 'text-white bg-white/10 border border-white/10' : 'text-slate-400 hover:text-white'
-              }`}
-            >
+            <button onClick={() => onSelectTab('shorten')}
+              className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${activeTab === 'shorten' ? 'text-white bg-white/10 border border-white/10' : 'text-slate-400 hover:text-white'}`}>
               Shorten
             </button>
-
-            <button
-              onClick={() => onSelectTab('links')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${
-                activeTab === 'links' ? 'text-white bg-white/10 border border-white/10' : 'text-slate-400 hover:text-white'
-              }`}
-            >
+            <button onClick={() => onSelectTab('links')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${activeTab === 'links' ? 'text-white bg-white/10 border border-white/10' : 'text-slate-400 hover:text-white'}`}>
               <Layers className="w-3.5 h-3.5" />
               <span>Dashboard &amp; Map</span>
               {!user && <Lock className="w-3 h-3 text-indigo-400 opacity-80" />}
             </button>
-
-            <button
-              onClick={() => onSelectTab('utm')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${
-                activeTab === 'utm' ? 'text-white bg-white/10 border border-white/10' : 'text-slate-400 hover:text-white'
-              }`}
-            >
+            <button onClick={() => onSelectTab('utm')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${activeTab === 'utm' ? 'text-white bg-white/10 border border-white/10' : 'text-slate-400 hover:text-white'}`}>
               <Tag className="w-3.5 h-3.5" />
               <span>UTM Builder</span>
             </button>
-
-            <button
-              onClick={() => onSelectTab('settings')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${
-                activeTab === 'settings' ? 'text-white bg-white/10 border border-white/10' : 'text-slate-400 hover:text-white'
-              }`}
-            >
+            <button onClick={() => onSelectTab('settings')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${activeTab === 'settings' ? 'text-white bg-white/10 border border-white/10' : 'text-slate-400 hover:text-white'}`}>
               <Globe className="w-3.5 h-3.5" />
               <span>Custom Domains</span>
               {!user && <Lock className="w-3 h-3 text-indigo-400 opacity-80" />}
             </button>
-
-            <button
-              onClick={() => onSelectTab('features')}
-              className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${
-                activeTab === 'features' ? 'text-white bg-white/10 border border-white/10' : 'text-slate-400 hover:text-white'
-              }`}
-            >
+            <button onClick={() => onSelectTab('features')}
+              className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${activeTab === 'features' ? 'text-white bg-white/10 border border-white/10' : 'text-slate-400 hover:text-white'}`}>
               Features
             </button>
-
-            <button
-              onClick={() => onSelectTab('pricing')}
-              className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${
-                activeTab === 'pricing' ? 'text-white bg-white/10 border border-white/10' : 'text-slate-400 hover:text-white'
-              }`}
-            >
+            <button onClick={() => onSelectTab('pricing')}
+              className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${activeTab === 'pricing' ? 'text-white bg-white/10 border border-white/10' : 'text-slate-400 hover:text-white'}`}>
               Pricing
             </button>
           </nav>
@@ -105,34 +65,24 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenAu
         <div className="flex items-center gap-2">
           {user ? (
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onSelectTab('settings')}
-                className="hidden sm:flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
-              >
+              <button type="button" onClick={() => onSelectTab('settings')}
+                className="hidden sm:flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10">
                 <User className="w-3.5 h-3.5 text-indigo-400" />
                 <span className="truncate max-w-[120px]">{displayName}</span>
               </button>
-              <button
-                onClick={logout}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl border border-white/10 transition-colors"
-              >
+              <button onClick={logout}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl border border-white/10 transition-colors">
                 <LogOut className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => onOpenAuth('signin')}
-                className="px-3.5 py-1.5 text-xs sm:text-sm font-medium text-slate-300 hover:text-white"
-              >
+              <button onClick={() => onOpenAuth('signin')} className="px-3.5 py-1.5 text-xs sm:text-sm font-medium text-slate-300 hover:text-white">
                 Sign In
               </button>
-              <button
-                onClick={() => onOpenAuth('signup')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-600/30"
-              >
+              <button onClick={() => onOpenAuth('signup')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-600/30">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Get Started</span>
               </button>
@@ -142,36 +92,12 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenAu
       </div>
 
       <div className="md:hidden flex overflow-x-auto no-scrollbar border-t border-white/10 px-3 py-1.5 bg-slate-900/90 gap-1 text-xs justify-between">
-        <button
-          onClick={() => onSelectTab('shorten')}
-          className={`px-3 py-1 rounded-lg shrink-0 font-medium ${activeTab === 'shorten' ? 'text-white bg-white/15' : 'text-slate-400'}`}
-        >
-          Shorten
-        </button>
-        <button
-          onClick={() => onSelectTab('links')}
-          className={`px-3 py-1 rounded-lg shrink-0 font-medium ${activeTab === 'links' ? 'text-white bg-white/15' : 'text-slate-400'}`}
-        >
-          Dashboard
-        </button>
-        <button
-          onClick={() => onSelectTab('utm')}
-          className={`px-3 py-1 rounded-lg shrink-0 font-medium ${activeTab === 'utm' ? 'text-white bg-white/15' : 'text-slate-400'}`}
-        >
-          UTM
-        </button>
-        <button
-          onClick={() => onSelectTab('settings')}
-          className={`px-3 py-1 rounded-lg shrink-0 font-medium ${activeTab === 'settings' ? 'text-white bg-white/15' : 'text-slate-400'}`}
-        >
-          Domains
-        </button>
-        <button
-          onClick={() => onSelectTab('pricing')}
-          className={`px-3 py-1 rounded-lg shrink-0 font-medium ${activeTab === 'pricing' ? 'text-white bg-white/15' : 'text-slate-400'}`}
-        >
-          Pricing
-        </button>
+        {(['shorten', 'links', 'utm', 'settings', 'pricing'] as AppTab[]).map((tab) => (
+          <button key={tab} onClick={() => onSelectTab(tab)}
+            className={`px-3 py-1 rounded-lg shrink-0 font-medium ${activeTab === tab ? 'text-white bg-white/15' : 'text-slate-400'}`}>
+            {tab === 'links' ? 'Dashboard' : tab === 'settings' ? 'Domains' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
       </div>
     </header>
   );

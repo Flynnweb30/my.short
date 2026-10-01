@@ -2,7 +2,7 @@
 import { useParams } from 'react-router-dom';
 import { urlService } from '../services/urlService';
 import { ShortUrl } from '../types';
-import { Lock, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Lock, AlertCircle, ArrowRight } from 'lucide-react';
 
 export const RedirectHandler: React.FC = () => {
   const { shortCode } = useParams<{ shortCode: string }>();
@@ -10,58 +10,41 @@ export const RedirectHandler: React.FC = () => {
   const [urlRecord, setUrlRecord] = useState<ShortUrl | null>(null);
   const [enteredPassword, setEnteredPassword] = useState('');
   const [needsPassword, setNeedsPassword] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     const handleRedirect = async () => {
       if (!shortCode) return;
-
       try {
         const data = await urlService.getUrlByShortCode(shortCode);
-        if (!data) {
-          setError('Short link not found or has been disabled.');
-          return;
-        }
-
+        if (!data) { setError('Short link not found or has been disabled.'); return; }
         if (data.expiresAt && new Date(data.expiresAt).getTime() < Date.now()) {
-          setError('This short link has expired.');
-          return;
+          setError('This short link has expired.'); return;
         }
-
-        if (data.password) {
-          setUrlRecord(data);
-          setNeedsPassword(true);
-          return;
-        }
-
+        if (data.password) { setUrlRecord(data); setNeedsPassword(true); return; }
         await executeFinalRedirect(data);
       } catch (err: any) {
         console.error('Redirect failed:', err);
         setError('An unexpected error occurred while routing your request.');
       }
     };
-
     handleRedirect();
   }, [shortCode]);
 
   const executeFinalRedirect = async (data: ShortUrl) => {
-    setRedirecting(true);
     try {
       await urlService.recordClick(data.shortCode, {
         referrer: document.referrer || 'Direct',
         userAgent: navigator.userAgent,
       });
-
       let finalDestination = data.originalUrl;
       const currentSearchParams = new URLSearchParams(window.location.search);
       if (currentSearchParams.toString()) {
-        const dest = new URL(finalDestination);
-        currentSearchParams.forEach((val, key) => {
-          dest.searchParams.set(key, val);
-        });
-        finalDestination = dest.toString();
+        try {
+          const dest = new URL(finalDestination);
+          currentSearchParams.forEach((val, key) => dest.searchParams.set(key, val));
+          finalDestination = dest.toString();
+        } catch { /* ignore */ }
       }
-
       window.location.replace(finalDestination);
     } catch {
       window.location.replace(data.originalUrl);
@@ -90,26 +73,15 @@ export const RedirectHandler: React.FC = () => {
           <p className="text-xs text-slate-400 mb-6">
             Enter the passcode to proceed to <strong className="text-white">/{urlRecord.shortCode}</strong>
           </p>
-
           {error && (
-            <div className="p-3 bg-rose-500/15 border border-rose-500/30 rounded-xl text-rose-300 text-xs mb-4">
-              {error}
-            </div>
+            <div className="p-3 bg-rose-500/15 border border-rose-500/30 rounded-xl text-rose-300 text-xs mb-4">{error}</div>
           )}
-
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <input
-              type="password"
-              required
-              value={enteredPassword}
-              onChange={(e) => setEnteredPassword(e.target.value)}
-              placeholder="Enter passcode PIN"
-              className="w-full px-4 py-3 bg-slate-950 border border-white/15 rounded-xl text-sm text-center text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono tracking-widest"
-            />
-            <button
-              type="submit"
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-1.5"
-            >
+            <input type="password" required value={enteredPassword}
+              onChange={(e) => setEnteredPassword(e.target.value)} placeholder="Enter passcode PIN"
+              className="w-full px-4 py-3 bg-slate-950 border border-white/15 rounded-xl text-sm text-center text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono tracking-widest" />
+            <button type="submit"
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-1.5">
               <span>Unlock &amp; Proceed</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
@@ -128,10 +100,7 @@ export const RedirectHandler: React.FC = () => {
           </div>
           <h2 className="text-xl font-bold text-white">Link Unavailable</h2>
           <p className="text-xs sm:text-sm text-slate-400">{error}</p>
-          <a
-            href="/"
-            className="inline-block px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all"
-          >
+          <a href="/" className="inline-block px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all">
             Create Your Own Shortlink
           </a>
         </div>

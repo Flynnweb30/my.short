@@ -15,7 +15,6 @@ const TIMEZONE_GEO_MAP: Record<string, GeoLocation> = {
   'America/Vancouver': { country: 'Canada', countryCode: 'CA', latitude: 49.2827, longitude: -123.1207, region: 'British Columbia' },
   'America/Sao_Paulo': { country: 'Brazil', countryCode: 'BR', latitude: -23.5505, longitude: -46.6333, region: 'São Paulo' },
   'America/Mexico_City': { country: 'Mexico', countryCode: 'MX', latitude: 19.4326, longitude: -99.1332, region: 'CDMX' },
-
   'Europe/London': { country: 'United Kingdom', countryCode: 'GB', latitude: 51.5074, longitude: -0.1278, region: 'London' },
   'Europe/Paris': { country: 'France', countryCode: 'FR', latitude: 48.8566, longitude: 2.3522, region: 'Île-de-France' },
   'Europe/Berlin': { country: 'Germany', countryCode: 'DE', latitude: 52.52, longitude: 13.405, region: 'Berlin' },
@@ -24,7 +23,6 @@ const TIMEZONE_GEO_MAP: Record<string, GeoLocation> = {
   'Europe/Rome': { country: 'Italy', countryCode: 'IT', latitude: 41.9028, longitude: 12.4964, region: 'Lazio' },
   'Europe/Dublin': { country: 'Ireland', countryCode: 'IE', latitude: 53.3498, longitude: -6.2603, region: 'Leinster' },
   'Europe/Stockholm': { country: 'Sweden', countryCode: 'SE', latitude: 59.3293, longitude: 18.0686, region: 'Stockholm' },
-
   'Asia/Tokyo': { country: 'Japan', countryCode: 'JP', latitude: 35.6762, longitude: 139.6503, region: 'Tokyo' },
   'Asia/Singapore': { country: 'Singapore', countryCode: 'SG', latitude: 1.3521, longitude: 103.8198, region: 'Singapore' },
   'Asia/Hong_Kong': { country: 'Hong Kong', countryCode: 'HK', latitude: 22.3193, longitude: 114.1694, region: 'Hong Kong' },
@@ -38,31 +36,16 @@ const TIMEZONE_GEO_MAP: Record<string, GeoLocation> = {
 };
 
 export function resolveGeoLocation(timeZone: string): GeoLocation {
-  if (TIMEZONE_GEO_MAP[timeZone]) {
-    return TIMEZONE_GEO_MAP[timeZone];
-  }
-
-  if (timeZone.startsWith('America/')) {
-    return { country: 'United States', countryCode: 'US', latitude: 39.8283, longitude: -98.5795 };
-  }
-  if (timeZone.startsWith('Europe/')) {
-    return { country: 'Germany', countryCode: 'DE', latitude: 51.1657, longitude: 10.4515 };
-  }
-  if (timeZone.startsWith('Asia/')) {
-    return { country: 'Japan', countryCode: 'JP', latitude: 36.2048, longitude: 138.2529 };
-  }
-  if (timeZone.startsWith('Australia/')) {
-    return { country: 'Australia', countryCode: 'AU', latitude: -25.2744, longitude: 133.7751 };
-  }
-
+  if (TIMEZONE_GEO_MAP[timeZone]) return TIMEZONE_GEO_MAP[timeZone];
+  if (timeZone.startsWith('America/')) return { country: 'United States', countryCode: 'US', latitude: 39.8283, longitude: -98.5795 };
+  if (timeZone.startsWith('Europe/')) return { country: 'Germany', countryCode: 'DE', latitude: 51.1657, longitude: 10.4515 };
+  if (timeZone.startsWith('Asia/')) return { country: 'Japan', countryCode: 'JP', latitude: 36.2048, longitude: 138.2529 };
+  if (timeZone.startsWith('Australia/')) return { country: 'Australia', countryCode: 'AU', latitude: -25.2744, longitude: 133.7751 };
   return { country: 'Global / Edge', countryCode: 'GL', latitude: 20.0, longitude: 0.0 };
 }
 
 export function getCountryFlag(countryCode?: string): string {
   if (!countryCode || countryCode.length !== 2 || countryCode === 'GL') return '🌐';
-  const codePoints = countryCode
-    .toUpperCase()
-    .split('')
-    .map((char) => 127397 + char.charCodeAt(0));
+  const codePoints = countryCode.toUpperCase().split('').map((char) => 127397 + char.charCodeAt(0));
   return String.fromCodePoint(...codePoints);
 }

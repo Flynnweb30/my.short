@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { Globe, MapPin, Clock, BarChart2, Tag, Smartphone, Laptop, Tablet, X } from 'lucide-react';
+import { Globe, Clock, Smartphone, Laptop, Tablet, X } from 'lucide-react';
 import { ClickLog } from '../types';
 import { getCountryFlag } from '../utils/geoData';
 
@@ -45,13 +45,9 @@ export const WorldClickMap: React.FC<WorldClickMapProps> = ({
   };
 
   const handleSelect = (country: string) => {
-    if (activeCountry === country) {
-      if (onSelectCountry) onSelectCountry(null);
-      else setInternalSelected(null);
-    } else {
-      if (onSelectCountry) onSelectCountry(country);
-      else setInternalSelected(country);
-    }
+    const next = activeCountry === country ? null : country;
+    if (onSelectCountry) onSelectCountry(next);
+    else setInternalSelected(next);
   };
 
   return (
@@ -61,14 +57,11 @@ export const WorldClickMap: React.FC<WorldClickMapProps> = ({
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-1">
             <Globe className="w-3.5 h-3.5" /> Geographic Telemetry Map
           </div>
-          <h3 className="text-xl font-extrabold text-white tracking-tight">
-            Global Click Origins
-          </h3>
+          <h3 className="text-xl font-extrabold text-white tracking-tight">Global Click Origins</h3>
           <p className="text-xs text-slate-400 mt-0.5">
             Click any node or country below to inspect location, local timezone time, and UTM attribution.
           </p>
         </div>
-
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <span className="text-xs text-slate-400">
             Active Countries: <strong className="text-indigo-400">{Object.keys(countryStats).length}</strong>
@@ -130,7 +123,6 @@ export const WorldClickMap: React.FC<WorldClickMapProps> = ({
                   {data.count}
                 </span>
               </span>
-
               <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-900 border border-white/20 text-white text-[10px] font-semibold whitespace-nowrap shadow-xl">
                 <span>{getCountryFlag(data.code)}</span>
                 <span>{country}</span>
@@ -142,7 +134,7 @@ export const WorldClickMap: React.FC<WorldClickMapProps> = ({
       </div>
 
       {selectedData && (
-        <div className="mt-5 p-4 sm:p-5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-slate-200 animate-in fade-in duration-200">
+        <div className="mt-5 p-4 sm:p-5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-slate-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-indigo-500/20">
             <div className="flex items-center gap-2">
               <span className="text-2xl">{getCountryFlag(selectedData.code)}</span>
@@ -172,50 +164,38 @@ export const WorldClickMap: React.FC<WorldClickMapProps> = ({
                 </div>
               </div>
             </div>
-
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <span className="text-lg font-extrabold text-emerald-400">{selectedData.count}</span>
-                <span className="block text-[10px] text-slate-400 uppercase">Recorded Clicks</span>
-              </div>
+            <div className="text-right">
+              <span className="text-lg font-extrabold text-emerald-400">{selectedData.count}</span>
+              <span className="block text-[10px] text-slate-400 uppercase">Recorded Clicks</span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
             <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
-              <span className="text-[10px] text-slate-400 font-semibold uppercase block mb-1">
-                Top UTM Campaigns
-              </span>
+              <span className="text-[10px] text-slate-400 font-semibold uppercase block mb-1">Top UTM Campaigns</span>
               <div className="space-y-1">
                 {Array.from(new Set(selectedData.clicks.map((c) => c.utmCampaign).filter(Boolean)))
                   .slice(0, 3)
                   .map((camp, idx) => (
-                    <div key={idx} className="font-mono text-[11px] text-indigo-300 truncate">
-                      &bull; {camp}
-                    </div>
-                  )) || <span className="text-slate-500 italic">No UTM tag</span>}
-              </div>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
-              <span className="text-[10px] text-slate-400 font-semibold uppercase block mb-1">
-                Top Referrers
-              </span>
-              <div className="space-y-1">
-                {Array.from(new Set(selectedData.clicks.map((c) => c.referrer)))
-                  .slice(0, 3)
-                  .map((ref, idx) => (
-                    <div key={idx} className="text-[11px] text-slate-300 truncate">
-                      &bull; {ref}
-                    </div>
+                    <div key={idx} className="font-mono text-[11px] text-indigo-300 truncate">&bull; {camp}</div>
                   ))}
+                {selectedData.clicks.filter((c) => c.utmCampaign).length === 0 && (
+                  <span className="text-slate-500 italic text-[11px]">No UTM tag</span>
+                )}
               </div>
             </div>
 
             <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
-              <span className="text-[10px] text-slate-400 font-semibold uppercase block mb-1">
-                Device Distribution
-              </span>
+              <span className="text-[10px] text-slate-400 font-semibold uppercase block mb-1">Top Referrers</span>
+              <div className="space-y-1">
+                {Array.from(new Set(selectedData.clicks.map((c) => c.referrer))).slice(0, 3).map((ref, idx) => (
+                  <div key={idx} className="text-[11px] text-slate-300 truncate">&bull; {ref}</div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
+              <span className="text-[10px] text-slate-400 font-semibold uppercase block mb-1">Device Distribution</span>
               <div className="flex items-center gap-3 text-[11px] text-slate-300 pt-1">
                 <span className="flex items-center gap-1">
                   <Laptop className="w-3 h-3 text-indigo-400" />

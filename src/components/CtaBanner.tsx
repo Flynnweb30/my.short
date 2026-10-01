@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowRight, Sparkles } from 'lucide-react';
+﻿import React from 'react';
+import { Sparkles, ArrowRight } from 'lucide-react';
 
 interface CtaBannerProps {
   onGetStarted: () => void;
@@ -7,38 +7,23 @@ interface CtaBannerProps {
 }
 
 export const CtaBanner: React.FC<CtaBannerProps> = ({ onGetStarted, isLoggedIn }) => {
-  if (isLoggedIn) {
-    return null;
-  }
+  if (isLoggedIn) return null;
 
   return (
-    <section className="py-12 bg-transparent">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600/25 via-purple-600/15 to-indigo-700/25 backdrop-blur-2xl border border-indigo-500/30 p-8 sm:p-12 shadow-2xl text-white flex flex-col md:flex-row items-center justify-between gap-6">
-          {/* Subtle background graphic circles */}
-          <div className="absolute -top-12 -right-12 w-56 h-56 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-purple-500/20 rounded-full blur-2xl pointer-events-none" />
-
-          <div className="relative z-10 max-w-xl text-center md:text-left">
-            <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2 text-white">
-              Ready to get started?
-            </h3>
-            <p className="text-slate-300 text-sm sm:text-base font-normal">
-              Create your free account today to unlock URL history, click analytics, and custom branded aliases.
-            </p>
-          </div>
-
-          <div className="relative z-10 shrink-0">
-            <button
-              id="cta-get-started-button"
-              onClick={onGetStarted}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/40 transition-all border border-indigo-400/30"
-            >
-              <span>Get Started</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+    <section className="py-16 px-4">
+      <div className="max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-indigo-600/20 via-purple-600/10 to-pink-600/20 border border-indigo-500/30 p-8 sm:p-12 text-center backdrop-blur-xl">
+        <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-3">
+          Ready to track every real click?
+        </h2>
+        <p className="text-sm text-slate-300 max-w-lg mx-auto mb-6">
+          Create a free account to unlock unlimited links, custom aliases, permanent retention, and full telemetry dashboards.
+        </p>
+        <button onClick={onGetStarted}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-white text-slate-900 font-bold text-sm rounded-xl shadow-2xl hover:scale-105 transition-transform">
+          <Sparkles className="w-4 h-4" />
+          <span>Get Started Free</span>
+          <ArrowRight className="w-4 h-4" />
+        </button>
       </div>
     </section>
   );

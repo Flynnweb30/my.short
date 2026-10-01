@@ -1,57 +1,36 @@
-import React from 'react';
-import { Link2, BarChart3, ShieldCheck } from 'lucide-react';
+﻿import React from 'react';
+import { Globe, Tag, Shield, Zap, BarChart3, QrCode } from 'lucide-react';
+
+const FEATURES = [
+  { icon: Globe, title: 'Interactive World Map', desc: 'Real-time geographic click visualization with country nodes and local timezones.' },
+  { icon: Tag, title: 'Full UTM Builder', desc: 'Build campaign-tagged URLs with all 6 UTM parameters and one-click presets.' },
+  { icon: BarChart3, title: 'Precision Telemetry', desc: 'Every legitimate click recorded. Unique visitors tracked via persistent fingerprints.' },
+  { icon: Shield, title: 'Password Protection', desc: 'Lock any short link behind a passcode to control access.' },
+  { icon: Zap, title: 'Instant Redirects', desc: 'Lightning-fast routing with UTM parameter forwarding preserved end-to-end.' },
+  { icon: QrCode, title: 'QR Code Generator', desc: 'Generate downloadable QR codes for any of your short links instantly.' },
+];
 
 export const FeaturesSection: React.FC = () => {
-  const features = [
-    {
-      icon: <Link2 className="w-6 h-6 text-indigo-400" />,
-      bg: 'bg-indigo-500/15 border-indigo-500/30',
-      title: 'Smart Shortening',
-      description: 'Create short, clean URLs instantly. Customize with your own alias for branding and effortless sharing.',
-    },
-    {
-      icon: <BarChart3 className="w-6 h-6 text-purple-400" />,
-      bg: 'bg-purple-500/15 border-purple-500/30',
-      title: 'Detailed Analytics',
-      description: 'Track every click with real-time counters and insights into your link traffic and audience activity.',
-    },
-    {
-      icon: <ShieldCheck className="w-6 h-6 text-blue-400" />,
-      bg: 'bg-blue-500/15 border-blue-500/30',
-      title: 'Secure & Private',
-      description: 'Enterprise-grade Firestore protection, strict access control, and link expiration safeguards.',
-    },
-  ];
-
   return (
-    <section className="py-16 bg-slate-900/30 backdrop-blur-sm border-t border-white/10">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-16 px-4 bg-slate-950">
+      <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-            Why Choose <span className="text-indigo-400">my.short</span>
+          <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-3">
+            Everything you need to <span className="text-indigo-400">track smarter</span>
           </h2>
-          <p className="mt-3 text-slate-400 text-sm sm:text-base max-w-lg mx-auto">
-            Everything you need to create, manage, and monitor high-performance short links.
+          <p className="text-sm text-slate-400 max-w-xl mx-auto">
+            Built for marketers, developers, and teams who need real visitor insights — not vanity metrics.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-          {features.map((feature, idx) => (
-            <div
-              key={idx}
-              className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-6 sm:p-8 shadow-xl hover:border-indigo-500/40 hover:bg-white/[0.08] transition-all flex flex-col items-start"
-            >
-              <div
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-5 border ${feature.bg}`}
-              >
-                {feature.icon}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {FEATURES.map((f, i) => (
+            <div key={i} className="p-5 rounded-2xl bg-slate-900/60 border border-white/10 backdrop-blur-xl hover:border-indigo-500/30 transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-3">
+                <f.icon className="w-5 h-5" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">
-                {feature.title}
-              </h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                {feature.description}
-              </p>
+              <h3 className="text-sm font-bold text-white mb-1">{f.title}</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>

@@ -7,7 +7,6 @@ const defaultFallbackConfig = {
   appId: "1:714255205377:web:a19537d8b396da51a8ec00",
   apiKey: "AIzaSyCMlfbCNIWm-sp0ROB35A7ASDJm14idQpc",
   authDomain: "my-shortener-v2.firebaseapp.com",
-  firestoreDatabaseId: "default",
   storageBucket: "my-shortener-v2.firebasestorage.app",
   messagingSenderId: "714255205377"
 };

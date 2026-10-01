@@ -1,26 +1,12 @@
 ﻿import React, { useEffect, useState } from 'react';
 import {
-  BarChart3,
-  Users,
-  MousePointerClick,
-  Globe,
-  RotateCcw,
-  Download,
-  Search,
-  ExternalLink,
-  Trash2,
-  Lock,
-  Tag,
-  Clock,
-  Laptop,
-  Smartphone,
-  Tablet,
-  AlertTriangle,
-  Sparkles,
+  BarChart3, Users, MousePointerClick, Globe, RotateCcw, Download,
+  Search, ExternalLink, Trash2, Tag, Laptop, Smartphone, Tablet,
+  AlertTriangle, Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { urlService } from '../services/urlService';
-import { analyticsService, getDisplayShortUrl, getReachableShortUrl } from '../utils/analytics';
+import { analyticsService, getReachableShortUrl } from '../utils/analytics';
 import { ShortUrl, ClickLog } from '../types';
 import { WorldClickMap } from './WorldClickMap';
 import { getCountryFlag } from '../utils/geoData';
@@ -32,16 +18,12 @@ export const UserDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountryFilter, setSelectedCountryFilter] = useState<string | null>(null);
-
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetTargetCode, setResetTargetCode] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
   const loadData = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) { setLoading(false); return; }
     setLoading(true);
     try {
       const userUrls = await urlService.getUserUrls(user.uid);
@@ -55,25 +37,9 @@ export const UserDashboard: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [user]);
+  useEffect(() => { loadData(); }, [user]);
 
   const aggregates = analyticsService.computeAggregates(urls, clicks);
-
-  const filteredClicks = clicks.filter((c) => {
-    if (selectedCountryFilter && c.country !== selectedCountryFilter) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return (
-        c.shortCode.toLowerCase().includes(q) ||
-        (c.utmCampaign && c.utmCampaign.toLowerCase().includes(q)) ||
-        (c.utmSource && c.utmSource.toLowerCase().includes(q)) ||
-        (c.country && c.country.toLowerCase().includes(q))
-      );
-    }
-    return true;
-  });
 
   const handleOpenReset = (shortCode?: string) => {
     setResetTargetCode(shortCode || null);
@@ -83,11 +49,8 @@ export const UserDashboard: React.FC = () => {
   const handleConfirmReset = async () => {
     setIsResetting(true);
     try {
-      if (resetTargetCode) {
-        await urlService.resetTelemetry(resetTargetCode);
-      } else if (user) {
-        await urlService.resetTelemetry(undefined, user.uid);
-      }
+      if (resetTargetCode) await urlService.resetTelemetry(resetTargetCode);
+      else if (user) await urlService.resetTelemetry(undefined, user.uid);
       await loadData();
       setResetModalOpen(false);
     } catch (err) {
@@ -119,28 +82,19 @@ export const UserDashboard: React.FC = () => {
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold mb-2">
             <Sparkles className="w-3.5 h-3.5" /> Real Visitor Attribution Active
           </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">
-            Telemetry &amp; Link Performance
-          </h1>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">Telemetry &amp; Link Performance</h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
             Real-time attribution, global origins, and device breakdown across your active links.
           </p>
         </div>
-
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => handleOpenReset()}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-bold transition-colors"
-            title="Reset telemetry counters"
-          >
+          <button onClick={() => handleOpenReset()}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-bold transition-colors">
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Restart Telemetry</span>
           </button>
-
-          <button
-            onClick={() => analyticsService.exportClicksToCsv(clicks)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-semibold transition-colors"
-          >
+          <button onClick={() => analyticsService.exportClicksToCsv(clicks)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-semibold transition-colors">
             <Download className="w-3.5 h-3.5" />
             <span>Export CSV</span>
           </button>
@@ -156,7 +110,6 @@ export const UserDashboard: React.FC = () => {
           <div className="text-2xl sm:text-3xl font-black text-white">{aggregates.totalClicks}</div>
           <span className="text-[11px] text-slate-400 mt-1 block">Every legitimate click event</span>
         </div>
-
         <div className="p-5 rounded-2xl bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-lg">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Unique Visitors</span>
@@ -165,7 +118,6 @@ export const UserDashboard: React.FC = () => {
           <div className="text-2xl sm:text-3xl font-black text-emerald-400">{aggregates.totalUniqueVisitors}</div>
           <span className="text-[11px] text-slate-400 mt-1 block">Distinct visitor sessions</span>
         </div>
-
         <div className="p-5 rounded-2xl bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-lg">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Active Links</span>
@@ -174,7 +126,6 @@ export const UserDashboard: React.FC = () => {
           <div className="text-2xl sm:text-3xl font-black text-purple-300">{urls.length}</div>
           <span className="text-[11px] text-slate-400 mt-1 block">Shortlinks monitored</span>
         </div>
-
         <div className="p-5 rounded-2xl bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-lg">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Top Source</span>
@@ -241,21 +192,15 @@ export const UserDashboard: React.FC = () => {
           </h3>
           <div className="space-y-2.5 text-xs text-slate-300">
             <div className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-              <span className="flex items-center gap-1.5">
-                <Laptop className="w-3.5 h-3.5 text-indigo-400" /> Desktop
-              </span>
+              <span className="flex items-center gap-1.5"><Laptop className="w-3.5 h-3.5 text-indigo-400" /> Desktop</span>
               <span className="font-mono font-bold text-white">{aggregates.devices.Desktop}</span>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-              <span className="flex items-center gap-1.5">
-                <Smartphone className="w-3.5 h-3.5 text-emerald-400" /> Mobile
-              </span>
+              <span className="flex items-center gap-1.5"><Smartphone className="w-3.5 h-3.5 text-emerald-400" /> Mobile</span>
               <span className="font-mono font-bold text-white">{aggregates.devices.Mobile}</span>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-              <span className="flex items-center gap-1.5">
-                <Tablet className="w-3.5 h-3.5 text-purple-400" /> Tablet
-              </span>
+              <span className="flex items-center gap-1.5"><Tablet className="w-3.5 h-3.5 text-purple-400" /> Tablet</span>
               <span className="font-mono font-bold text-white">{aggregates.devices.Tablet}</span>
             </div>
           </div>
@@ -267,13 +212,9 @@ export const UserDashboard: React.FC = () => {
           <h2 className="text-lg font-bold text-white">Active Shortlinks &amp; Performance</h2>
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search links, UTMs, origins..."
-              className="pl-9 pr-3 py-1.5 bg-slate-950 border border-white/10 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
+              className="pl-9 pr-3 py-1.5 bg-slate-950 border border-white/10 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
           </div>
         </div>
 
@@ -291,28 +232,18 @@ export const UserDashboard: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-white/5 text-slate-300">
               {urls.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
-                    No active shortlinks found. Create one in the Shorten tab!
-                  </td>
-                </tr>
+                <tr><td colSpan={6} className="p-8 text-center text-slate-500">No active shortlinks found. Create one in the Shorten tab!</td></tr>
               ) : (
                 urls.map((link) => (
                   <tr key={link.shortCode} className="hover:bg-white/5 transition-colors">
                     <td className="p-4 font-mono font-bold text-indigo-400 whitespace-nowrap">
-                      <a
-                        href={getReachableShortUrl(link.shortCode)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:underline flex items-center gap-1.5"
-                      >
+                      <a href={getReachableShortUrl(link.shortCode)} target="_blank" rel="noopener noreferrer"
+                        className="hover:underline flex items-center gap-1.5">
                         <span>/{link.shortCode}</span>
                         <ExternalLink className="w-3 h-3 text-slate-400" />
                       </a>
                     </td>
-                    <td className="p-4 max-w-xs truncate text-slate-400" title={link.originalUrl}>
-                      {link.originalUrl}
-                    </td>
+                    <td className="p-4 max-w-xs truncate text-slate-400" title={link.originalUrl}>{link.originalUrl}</td>
                     <td className="p-4 text-center font-bold text-white font-mono">{link.clicks || 0}</td>
                     <td className="p-4 text-center font-bold text-emerald-400 font-mono">{link.uniqueVisitors || 0}</td>
                     <td className="p-4">
@@ -320,24 +251,18 @@ export const UserDashboard: React.FC = () => {
                         <span className="px-2 py-0.5 rounded bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-mono text-[11px]">
                           {link.utmCampaign}
                         </span>
-                      ) : (
-                        <span className="text-slate-600">—</span>
-                      )}
+                      ) : <span className="text-slate-600">—</span>}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => handleOpenReset(link.shortCode)}
+                        <button onClick={() => handleOpenReset(link.shortCode)}
                           className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-colors"
-                          title="Reset click counters for this link"
-                        >
+                          title="Reset click counters for this link">
                           <RotateCcw className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteUrl(link.shortCode)}
+                        <button onClick={() => handleDeleteUrl(link.shortCode)}
                           className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
-                          title="Delete shortlink"
-                        >
+                          title="Delete shortlink">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -351,42 +276,29 @@ export const UserDashboard: React.FC = () => {
       </div>
 
       {resetModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
           <div className="w-full max-w-md bg-slate-900 border border-white/10 rounded-3xl p-6 shadow-2xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">
-                  Reset Telemetry Counters?
-                </h3>
+                <h3 className="text-base font-bold text-white">Reset Telemetry Counters?</h3>
                 <p className="text-xs text-slate-400">
-                  {resetTargetCode
-                    ? `Reset click counters and visitor events for /${resetTargetCode}.`
-                    : 'Reset telemetry click metrics for ALL your shortlinks.'}
+                  {resetTargetCode ? `Reset click counters and visitor events for /${resetTargetCode}.` : 'Reset telemetry click metrics for ALL your shortlinks.'}
                 </p>
               </div>
             </div>
-
             <p className="text-xs text-slate-300 leading-relaxed mb-6 bg-slate-950 p-3 rounded-xl border border-white/5">
               This action resets total clicks and unique visitor counts to zero. Your shortened URL destinations, custom aliases, and passwords remain intact.
             </p>
-
             <div className="flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setResetModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-white/5 hover:bg-white/10"
-              >
+              <button type="button" onClick={() => setResetModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-white/5 hover:bg-white/10">
                 Cancel
               </button>
-              <button
-                type="button"
-                disabled={isResetting}
-                onClick={handleConfirmReset}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-600/30"
-              >
+              <button type="button" disabled={isResetting} onClick={handleConfirmReset}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-600/30 disabled:opacity-50">
                 {isResetting ? 'Resetting...' : 'Confirm Reset'}
               </button>
             </div>
