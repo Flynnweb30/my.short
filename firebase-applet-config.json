@@ -1,12 +1,10 @@
 {
-  "projectId": "my-shortener-v2",
-  "appId": "1:714255205377:web:a19537d8b396da51a8ec00",
-  "apiKey": "AIzaSyCMlfbCNIWm-sp0ROB35A7ASDJm14idQpc",
-  "authDomain": "my-shortener-v2.firebaseapp.com",
-  "firestoreDatabaseId": "default",
-  "storageBucket": "my-shortener-v2.firebasestorage.app",
-  "messagingSenderId": "714255205377",
-  "measurementId": "",
-  "oAuthClientId": "714255205377-fbebs648trlj62ash0l9sbauji8mfccl.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "projectId": "my-short-v2",
+  "appId": "1:651705896114:web:03fd2e8a7520de407f0dab",
+  "apiKey": "AIzaSyDaokQpll66TEe5k7Lw0fIIhnv2vkl47L0",
+  "authDomain": "my-short-v2.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "my-short-v2.firebasestorage.app",
+  "messagingSenderId": "651705896114",
+  "measurementId": "G-R1J9H41WDY"
 }

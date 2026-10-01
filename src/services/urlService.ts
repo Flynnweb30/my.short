@@ -1,300 +1,683 @@
-﻿import { db } from '../lib/firebase';
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
-import { ShortUrl, ClickLog, ShortenUrlPayload } from '../types';
-import { resolveGeoLocation } from '../utils/geoData';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  onSnapshot,
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
+import { ShortUrl, ShortenUrlPayload, ClickLog } from '../types';
+import { resolveEventTelemetry } from '../utils/analytics';
+import { getOrCreateVisitorId } from '../utils/visitor';
+import { dispatchClickWebhook } from './webhookService';
 
-const LOCAL_URLS_KEY = 'myshort_urls_v3';
-const LOCAL_CLICKS_KEY = 'myshort_clicks_v3';
+const GUEST_STORAGE_KEY = 'myshort_guest_links';
+const LOCAL_CLICKS_KEY = 'myshort_local_clicks';
+const VISITED_SHORTCODES_KEY = 'myshort_visited_codes';
 
-export function detectDeviceType(ua: string): 'Desktop' | 'Mobile' | 'Tablet' {
-  const lower = ua.toLowerCase();
-  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(lower)) return 'Tablet';
-  if (/Mobile|iP(hone|od)|Android|BlackBerry|IEMobile|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/i.test(lower)) return 'Mobile';
-  return 'Desktop';
-}
+/**
+ * Validates and normalizes long destination URL
+ */
+export function normalizeAndValidateUrl(inputUrl: string): { valid: boolean; url: string; error?: string } {
+  let trimmed = inputUrl.trim();
+  if (!trimmed) {
+    return { valid: false, url: '', error: 'Please enter a URL to shorten' };
+  }
 
-export function detectBrowser(ua: string): string {
-  if (/edg/i.test(ua)) return 'Microsoft Edge';
-  if (/chrome|crios/i.test(ua)) return 'Chrome';
-  if (/firefox|fxios/i.test(ua)) return 'Firefox';
-  if (/safari/i.test(ua) && !/chrome/i.test(ua)) return 'Safari';
-  if (/opr\//i.test(ua)) return 'Opera';
-  return 'Browser';
-}
+  // Auto-prepend https:// if protocol is missing
+  if (!/^https?:\/\//i.test(trimmed)) {
+    trimmed = `https://${trimmed}`;
+  }
 
-export function detectOS(ua: string): string {
-  if (/windows/i.test(ua)) return 'Windows';
-  if (/macintosh|mac os x/i.test(ua)) return 'macOS';
-  if (/android/i.test(ua)) return 'Android';
-  if (/iphone|ipad|ipod/i.test(ua)) return 'iOS';
-  if (/linux/i.test(ua)) return 'Linux';
-  return 'Unknown OS';
-}
-
-export function normalizeAndValidateUrl(rawUrl: string): { valid: boolean; normalized: string; error?: string } {
-  let trimmed = rawUrl.trim();
-  if (!trimmed) return { valid: false, normalized: '', error: 'Destination URL is required.' };
-  if (!/^https?:\/\//i.test(trimmed)) trimmed = `https://${trimmed}`;
   try {
     const parsed = new URL(trimmed);
-    if (!['http:', 'https:'].includes(parsed.protocol)) return { valid: false, normalized: trimmed, error: 'Only http:// and https:// URLs are supported.' };
-    if (!parsed.hostname.includes('.')) return { valid: false, normalized: trimmed, error: 'Destination must include a valid domain.' };
-    return { valid: true, normalized: trimmed };
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return { valid: false, url: '', error: 'URL must use http or https protocol' };
+    }
+    // Prevent self-referencing loops
+    if (typeof window !== 'undefined') {
+      const currentHost = window.location.host;
+      if (parsed.host === currentHost && !parsed.pathname.startsWith('/')) {
+        return { valid: false, url: '', error: 'Cannot create short link to another internal short link' };
+      }
+    }
+    return { valid: true, url: trimmed };
   } catch {
-    return { valid: false, normalized: trimmed, error: 'Invalid URL format.' };
+    return { valid: false, url: '', error: 'Please enter a valid web URL (e.g. https://example.com)' };
   }
 }
 
-export function generateShortCode(length = 6): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+/**
+ * Generate high-entropy alphanumeric shortcode
+ */
+function generateRandomCode(length = 6): string {
+  const chars = '23456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ';
   let result = '';
-  for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+  if (typeof window !== 'undefined' && window.crypto) {
+    const randomValues = new Uint8Array(length);
+    window.crypto.getRandomValues(randomValues);
+    for (let i = 0; i < length; i++) {
+      result += chars[randomValues[i] % chars.length];
+    }
+  } else {
+    for (let i = 0; i < length; i++) {
+      result += chars[Math.floor(Math.random() * chars.length)];
+    }
+  }
   return result;
 }
 
-export const urlService = {
-  async getUrlByShortCode(shortCode: string): Promise<ShortUrl | null> {
-    const cleanCode = shortCode.trim();
-    try {
-      const docRef = doc(db, 'urls', cleanCode);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) return snap.data() as ShortUrl;
-    } catch (e) {
-      console.warn('Firestore lookup fallback:', e);
+/**
+ * Create a new shortened URL
+ */
+export async function createShortUrl(
+  payload: ShortenUrlPayload,
+  userId?: string | null
+): Promise<ShortUrl> {
+  const validation = normalizeAndValidateUrl(payload.originalUrl);
+  if (!validation.valid) {
+    throw new Error(validation.error || 'Invalid URL');
+  }
+
+  let code = '';
+  const isCustom = Boolean(payload.customAlias && payload.customAlias.trim());
+
+  if (isCustom) {
+    const cleanedAlias = payload.customAlias!.trim().toLowerCase();
+    if (!/^[a-zA-Z0-9_-]{3,32}$/.test(cleanedAlias)) {
+      throw new Error('Custom alias must be 3-32 characters long and only contain letters, numbers, hyphens, and underscores');
     }
+
+    // Reserved routes check
+    const reservedRoutes = [
+      'api',
+      'auth',
+      'login',
+      'signup',
+      'dashboard',
+      'settings',
+      'admin',
+      'about',
+      'privacy',
+      'terms',
+      'contact',
+      'utm',
+      'features',
+      'pricing',
+      'links',
+      'dist',
+      'assets',
+      'robots.txt',
+      'sitemap.xml',
+    ];
+    if (reservedRoutes.includes(cleanedAlias)) {
+      throw new Error(`The alias "${cleanedAlias}" is a reserved system keyword. Please choose another.`);
+    }
+
+    // Check availability
     try {
-      const raw = localStorage.getItem(LOCAL_URLS_KEY);
-      if (raw) {
-        const localList: ShortUrl[] = JSON.parse(raw);
-        const found = localList.find((u) => u.shortCode.toLowerCase() === cleanCode.toLowerCase());
-        if (found) return found;
+      const existingSnap = await getDoc(doc(db, 'urls', cleanedAlias));
+      if (existingSnap.exists()) {
+        throw new Error(`The alias "${cleanedAlias}" is already taken. Please try another one.`);
       }
-    } catch { /* ignore */ }
-    return null;
-  },
+    } catch (err: any) {
+      if (err.message && err.message.includes('already taken')) {
+        throw err;
+      }
+      handleFirestoreError(err, OperationType.GET, `urls/${cleanedAlias}`);
+    }
+    code = cleanedAlias;
+  } else {
+    // Generate code and check collision
+    let attempts = 0;
+    while (attempts < 5) {
+      const testCode = generateRandomCode(6);
+      try {
+        const snap = await getDoc(doc(db, 'urls', testCode));
+        if (!snap.exists()) {
+          code = testCode;
+          break;
+        }
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, `urls/${testCode}`);
+      }
+      attempts++;
+    }
+    if (!code) {
+      code = generateRandomCode(8);
+    }
+  }
 
-  async createShortUrl(payload: ShortenUrlPayload, ownerId: string | null): Promise<ShortUrl> {
-    const validCheck = normalizeAndValidateUrl(payload.originalUrl);
-    if (!validCheck.valid) throw new Error(validCheck.error || 'Invalid URL');
+  let expiresAt: string | null = null;
+  if (!userId) {
+    // Guest Mode: strictly enforce 48 hours (2 days) lifetime
+    const guestExpiry = new Date();
+    guestExpiry.setHours(guestExpiry.getHours() + 48);
+    expiresAt = guestExpiry.toISOString();
+  } else if (payload.expireDays && payload.expireDays > 0) {
+    // Authenticated members can set custom expiration periods
+    const d = new Date();
+    d.setDate(d.getDate() + payload.expireDays);
+    expiresAt = d.toISOString();
+  } else {
+    // Authenticated members default to permanent links
+    expiresAt = null;
+  }
 
-    let code = payload.customAlias ? payload.customAlias.trim() : generateShortCode();
-    code = code.replace(/[^a-zA-Z0-9_-]/g, '');
-    if (!code) code = generateShortCode();
+  const newRecord: ShortUrl = {
+    id: code,
+    shortCode: code,
+    originalUrl: validation.url,
+    ownerId: userId ? userId : '',
+    title: payload.title?.trim() || validation.url.replace(/^https?:\/\//i, '').slice(0, 50),
+    createdAt: new Date().toISOString(),
+    expiresAt,
+    resetAt: null,
+    status: 'active',
+    clicks: 0,
+    uniqueClicks: 0,
+    lastAccessedAt: null,
+    isCustomAlias: isCustom,
+    password: payload.password?.trim() || null,
+    utmCampaign: payload.utmCampaign?.trim() || null,
+    utmSource: payload.utmSource?.trim() || null,
+    utmMedium: payload.utmMedium?.trim() || null,
+    utmContent: payload.utmContent?.trim() || null,
+    utmTerm: payload.utmTerm?.trim() || null,
+    utmId: payload.utmId?.trim() || null,
+    domain: payload.domain?.trim() || null,
+  };
 
-    const existing = await this.getUrlByShortCode(code);
-    if (existing) {
-      if (payload.customAlias) throw new Error(`The custom alias "${code}" is already taken. Please choose another.`);
-      else code = generateShortCode(7);
+  try {
+    await setDoc(doc(db, 'urls', code), newRecord);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `urls/${code}`);
+  }
+
+  // If user is guest, save reference to local cache for seamless upgrade claiming
+  if (!userId) {
+    saveGuestUrl(newRecord);
+  }
+
+  return newRecord;
+}
+
+export type ResolveResult =
+  | { type: 'success'; destinationUrl: string; shortUrlData?: ShortUrl }
+  | { type: 'password_required'; shortCode: string; title?: string }
+  | { type: 'invalid_password'; shortCode: string; message: string }
+  | { type: 'not_found'; shortCode: string }
+  | { type: 'expired'; shortCode: string; message?: string }
+  | { type: 'disabled'; shortCode: string }
+  | { type: 'error'; message: string };
+
+/**
+ * Record click metadata in subcollection and update counter asynchronously.
+ * Records EVERY legitimate click without deduplicating events.
+ * Distinguishes Total Clicks (every event) from Unique Clicks (first time visitor).
+ */
+export async function recordClickTelemetry(
+  shortCode: string,
+  destinationUrl: string = '',
+  utmOverrides?: Partial<ClickLog>
+): Promise<ClickLog> {
+  const telemetry = await resolveEventTelemetry(shortCode, destinationUrl, utmOverrides);
+
+  // 1. Try writing to Firestore subcollection
+  try {
+    const clickRef = doc(db, 'urls', shortCode, 'clicks', telemetry.id);
+    await setDoc(clickRef, telemetry);
+  } catch (err) {
+    console.warn('Could not record telemetry in Firestore subcollection:', err);
+  }
+
+  // 2. Cache in local storage for instant offline analytics
+  try {
+    const raw = localStorage.getItem(LOCAL_CLICKS_KEY);
+    const existing: ClickLog[] = raw ? JSON.parse(raw) : [];
+    const updated = [telemetry, ...existing].slice(0, 1000);
+    localStorage.setItem(LOCAL_CLICKS_KEY, JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+
+  return telemetry;
+}
+
+/**
+ * Check if the current visitor is unique for a given shortCode
+ */
+export function isUniqueVisitorForCode(shortCode: string): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const raw = localStorage.getItem(VISITED_SHORTCODES_KEY);
+    const visitedSet: string[] = raw ? JSON.parse(raw) : [];
+    if (visitedSet.includes(shortCode)) {
+      return false;
+    }
+    visitedSet.push(shortCode);
+    localStorage.setItem(VISITED_SHORTCODES_KEY, JSON.stringify(visitedSet.slice(-500)));
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Resolve short URL, check validity, expiry, password protection, and record click metadata
+ */
+export async function resolveShortUrl(
+  shortCode: string,
+  providedPassword?: string
+): Promise<ResolveResult> {
+  const cleanCode = shortCode.trim();
+  if (!cleanCode) {
+    return { type: 'not_found', shortCode };
+  }
+
+  try {
+    const docRef = doc(db, 'urls', cleanCode);
+    const snap = await getDoc(docRef);
+
+    if (!snap.exists()) {
+      return { type: 'not_found', shortCode: cleanCode };
     }
 
-    const now = new Date();
-    let expiresAt: string | null = null;
-    if (ownerId && payload.expireDays) {
-      expiresAt = new Date(now.getTime() + payload.expireDays * 86400000).toISOString();
-    } else if (!ownerId) {
-      expiresAt = new Date(now.getTime() + 48 * 3600000).toISOString();
+    const data = snap.data() as ShortUrl;
+
+    if (data.status === 'disabled') {
+      return { type: 'disabled', shortCode: cleanCode };
     }
 
-    const newRecord: ShortUrl = {
-      id: code,
-      shortCode: code,
-      originalUrl: validCheck.normalized,
-      ownerId: ownerId || null,
-      title: payload.title || undefined,
-      createdAt: now.toISOString(),
-      expiresAt,
-      status: 'active',
-      clicks: 0,
-      uniqueVisitors: 0,
-      lastAccessedAt: null,
-      isCustomAlias: Boolean(payload.customAlias),
-      password: payload.password || null,
-      domain: payload.domain || 'my.short',
-      utm: payload.utm || null,
-      utmCampaign: payload.utm?.campaign || payload.utmCampaign || null,
-      utmSource: payload.utm?.source || null,
-      utmMedium: payload.utm?.medium || null,
-    };
-
-    try {
-      await setDoc(doc(db, 'urls', code), newRecord);
-    } catch (err) {
-      console.warn('Saving URL to Firestore failed; storing locally:', err);
+    // Check expiration (such as 48-hour guest limit)
+    if (data.expiresAt && new Date(data.expiresAt).getTime() < Date.now()) {
+      return {
+        type: 'expired',
+        shortCode: cleanCode,
+        message: !data.ownerId
+          ? 'This guest link was active for 48 hours and has now expired. Create an account to generate permanent links.'
+          : 'This link has expired based on the expiration date set by its creator.',
+      };
     }
 
-    try {
-      const raw = localStorage.getItem(LOCAL_URLS_KEY);
-      const list: ShortUrl[] = raw ? JSON.parse(raw) : [];
-      localStorage.setItem(LOCAL_URLS_KEY, JSON.stringify([newRecord, ...list]));
-    } catch { /* ignore */ }
-
-    return newRecord;
-  },
-
-  async recordClick(shortCode: string, clientMeta: { referrer?: string; userAgent?: string }): Promise<{ clicks: number; uniqueVisitors: number }> {
-    const urlData = await this.getUrlByShortCode(shortCode);
-    if (!urlData) throw new Error('URL not found');
-
-    const ua = clientMeta.userAgent || (typeof navigator !== 'undefined' ? navigator.userAgent : '');
-    const timeZone = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' : 'UTC';
-    const geo = resolveGeoLocation(timeZone);
-
-    let visitorId = typeof localStorage !== 'undefined' ? localStorage.getItem('myshort_vid') : null;
-    if (!visitorId) {
-      visitorId = `v_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      if (typeof localStorage !== 'undefined') localStorage.setItem('myshort_vid', visitorId);
+    // Check password protection
+    if (data.password && data.password.trim().length > 0) {
+      if (!providedPassword) {
+        return {
+          type: 'password_required',
+          shortCode: cleanCode,
+          title: data.title || 'Protected Link',
+        };
+      }
+      if (providedPassword.trim() !== data.password.trim()) {
+        return {
+          type: 'invalid_password',
+          shortCode: cleanCode,
+          message: 'Incorrect password. Please try again.',
+        };
+      }
     }
 
-    const visitedLinksKey = `myshort_vlinks_${visitorId}`;
-    let visitedSet: string[] = [];
-    try {
-      const visitedSetRaw = localStorage.getItem(visitedLinksKey);
-      visitedSet = visitedSetRaw ? JSON.parse(visitedSetRaw) : [];
-    } catch { visitedSet = []; }
+    // Determine if visitor is unique
+    const isUnique = isUniqueVisitorForCode(cleanCode);
+    const newTotalClicks = (data.clicks || 0) + 1;
+    const newUniqueClicks = (data.uniqueClicks || 0) + (isUnique ? 1 : 0);
 
-    const isUnique = !visitedSet.includes(shortCode);
-    if (isUnique) {
-      visitedSet.push(shortCode);
-      try { localStorage.setItem(visitedLinksKey, JSON.stringify(visitedSet)); } catch { /* ignore */ }
-    }
+    // Update parent document counters asynchronously
+    updateDoc(docRef, {
+      clicks: newTotalClicks,
+      uniqueClicks: newUniqueClicks,
+      lastAccessedAt: new Date().toISOString(),
+    }).catch((updateErr) => {
+      console.warn('Failed to record click metric asynchronously:', updateErr);
+    });
 
-    const newClicks = (urlData.clicks || 0) + 1;
-    const newUnique = (urlData.uniqueVisitors || 0) + (isUnique ? 1 : 0);
-    const eventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    // Record complete telemetry log with unique Event ID, UTM attribution, and Geolocation
+    recordClickTelemetry(cleanCode, data.originalUrl, {
+      utmSource: data.utmSource || undefined,
+      utmMedium: data.utmMedium || undefined,
+      utmCampaign: data.utmCampaign || undefined,
+      utmContent: data.utmContent || undefined,
+      utmTerm: data.utmTerm || undefined,
+      utmId: data.utmId || undefined,
+    }).then((recordedTelemetry) => {
+      // Real-time Webhook Dispatch to registered URLs
+      if (data.ownerId) {
+        const payloadData: ShortUrl = {
+          ...data,
+          clicks: newTotalClicks,
+          uniqueClicks: newUniqueClicks,
+        };
+        dispatchClickWebhook(payloadData, recordedTelemetry).catch((whErr) => {
+          console.warn('Webhook dispatch notification failed:', whErr);
+        });
+      }
+    }).catch((recErr) => {
+      console.warn('Telemetry recording background error:', recErr);
+    });
 
-    const clickEvent: ClickLog = {
-      id: eventId,
-      shortCode,
-      originalUrl: urlData.originalUrl,
-      timestamp: new Date().toISOString(),
-      browser: detectBrowser(ua),
-      deviceType: detectDeviceType(ua),
-      os: detectOS(ua),
-      referrer: clientMeta.referrer || (typeof document !== 'undefined' ? document.referrer : '') || 'Direct',
-      language: typeof navigator !== 'undefined' ? navigator.language || 'en' : 'en',
-      timeZone,
-      country: geo.country,
-      countryCode: geo.countryCode,
-      region: geo.region,
-      latitude: geo.latitude,
-      longitude: geo.longitude,
-      isUnique,
-      visitorId: visitorId || 'unknown',
-      utmSource: urlData.utm?.source || urlData.utmSource || undefined,
-      utmMedium: urlData.utm?.medium || urlData.utmMedium || undefined,
-      utmCampaign: urlData.utm?.campaign || urlData.utmCampaign || undefined,
-      utmId: urlData.utm?.id || undefined,
-      utmTerm: urlData.utm?.term || undefined,
-      utmContent: urlData.utm?.content || undefined,
-    };
+    return { type: 'success', destinationUrl: data.originalUrl, shortUrlData: data };
+  } catch (err: any) {
+    console.error('Error resolving short URL:', err);
+    return { type: 'error', message: 'Unable to connect to service. Please try again later.' };
+  }
+}
 
-    try {
-      await updateDoc(doc(db, 'urls', shortCode), {
-        clicks: newClicks,
-        uniqueVisitors: newUnique,
-        lastAccessedAt: new Date().toISOString(),
+/**
+ * Fetch click telemetry logs for a specific shortCode
+ */
+export async function getUrlClickLogs(shortCode: string): Promise<ClickLog[]> {
+  const cleanCode = shortCode.trim();
+  const remoteLogs: ClickLog[] = [];
+
+  try {
+    const clicksCol = collection(db, 'urls', cleanCode, 'clicks');
+    const snap = await getDocs(clicksCol);
+    snap.forEach((d) => {
+      remoteLogs.push(d.data() as ClickLog);
+    });
+  } catch (err) {
+    console.warn('Could not fetch remote clicks subcollection:', err);
+  }
+
+  // Merge with local storage clicks for high responsiveness
+  try {
+    const raw = localStorage.getItem(LOCAL_CLICKS_KEY);
+    const local: ClickLog[] = raw ? JSON.parse(raw) : [];
+    const matchingLocal = local.filter((c) => c.shortCode === cleanCode);
+
+    const mergedMap = new Map<string, ClickLog>();
+    remoteLogs.forEach((c) => mergedMap.set(c.id, c));
+    matchingLocal.forEach((c) => mergedMap.set(c.id, c));
+
+    const combined = Array.from(mergedMap.values());
+    combined.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return combined;
+  } catch {
+    remoteLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return remoteLogs;
+  }
+}
+
+/**
+ * Real-time live Firestore listener for click telemetry
+ */
+export function subscribeToUrlClickLogs(
+  shortCode: string,
+  onUpdate: (logs: ClickLog[]) => void
+): () => void {
+  const cleanCode = shortCode.trim();
+  const clicksCol = collection(db, 'urls', cleanCode, 'clicks');
+
+  return onSnapshot(
+    clicksCol,
+    (snapshot) => {
+      const remoteLogs: ClickLog[] = [];
+      snapshot.forEach((d) => {
+        remoteLogs.push(d.data() as ClickLog);
       });
-      await setDoc(doc(db, 'urls', shortCode, 'clicks', eventId), clickEvent);
-    } catch (e) {
-      console.warn('Firestore click log write error:', e);
-    }
 
-    try {
-      const rawUrls = localStorage.getItem(LOCAL_URLS_KEY);
-      if (rawUrls) {
-        const list: ShortUrl[] = JSON.parse(rawUrls);
-        const updated = list.map((u) =>
-          u.shortCode === shortCode ? { ...u, clicks: newClicks, uniqueVisitors: newUnique, lastAccessedAt: clickEvent.timestamp } : u
-        );
-        localStorage.setItem(LOCAL_URLS_KEY, JSON.stringify(updated));
+      try {
+        const raw = localStorage.getItem(LOCAL_CLICKS_KEY);
+        const local: ClickLog[] = raw ? JSON.parse(raw) : [];
+        const matchingLocal = local.filter((c) => c.shortCode === cleanCode);
+
+        const mergedMap = new Map<string, ClickLog>();
+        remoteLogs.forEach((c) => mergedMap.set(c.id, c));
+        matchingLocal.forEach((c) => mergedMap.set(c.id, c));
+
+        const combined = Array.from(mergedMap.values());
+        combined.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        onUpdate(combined);
+      } catch {
+        remoteLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        onUpdate(remoteLogs);
       }
-      const rawClicks = localStorage.getItem(LOCAL_CLICKS_KEY);
-      const clickList: ClickLog[] = rawClicks ? JSON.parse(rawClicks) : [];
-      localStorage.setItem(LOCAL_CLICKS_KEY, JSON.stringify([clickEvent, ...clickList]));
-    } catch { /* ignore */ }
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.GET, `urls/${cleanCode}/clicks`);
+    }
+  );
+}
 
-    return { clicks: newClicks, uniqueVisitors: newUnique };
-  },
+/**
+ * Fetch click telemetry logs across multiple links for an authenticated user
+ */
+export async function getAllUserClickLogs(shortCodes: string[]): Promise<ClickLog[]> {
+  if (!shortCodes || shortCodes.length === 0) return [];
 
-  async getUserUrls(userId: string): Promise<ShortUrl[]> {
+  const promises = shortCodes.slice(0, 30).map((code) => getUrlClickLogs(code));
+  const results = await Promise.all(promises);
+  const flat = results.flat();
+
+  // Deduplicate by event ID and sort descending
+  const map = new Map<string, ClickLog>();
+  flat.forEach((c) => map.set(c.id, c));
+
+  const all = Array.from(map.values());
+  all.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return all;
+}
+
+/**
+ * Restart / Reset active counters for a link without deleting historical data.
+ * Records resetAt timestamp.
+ */
+export async function resetLinkActiveCounters(shortCode: string): Promise<string> {
+  const resetAt = new Date().toISOString();
+  try {
+    await updateDoc(doc(db, 'urls', shortCode), {
+      resetAt,
+    });
+    return resetAt;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, `urls/${shortCode}`);
+    throw err;
+  }
+}
+
+/**
+ * Clear reset baseline for a link, returning active counters to lifetime totals
+ */
+export async function clearLinkResetBaseline(shortCode: string): Promise<void> {
+  try {
+    await updateDoc(doc(db, 'urls', shortCode), {
+      resetAt: null,
+    });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, `urls/${shortCode}`);
+    throw err;
+  }
+}
+
+/**
+ * Claim an unowned guest URL and make it permanent for an authenticated user
+ */
+export async function claimGuestUrl(shortCode: string, userId: string): Promise<boolean> {
+  try {
+    const docRef = doc(db, 'urls', shortCode);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return false;
+
+    const data = snap.data() as ShortUrl;
+    // Only unowned guest links can be claimed
+    if (!data.ownerId || data.ownerId === '') {
+      await updateDoc(docRef, {
+        ownerId: userId,
+        expiresAt: null, // Upgrade to permanent link!
+      });
+      removeGuestUrl(shortCode);
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.warn('Failed to claim guest url:', err);
+    return false;
+  }
+}
+
+/**
+ * Claim all guest URLs stored in browser session upon signup/signin
+ */
+export async function claimAllGuestUrls(userId: string): Promise<number> {
+  const guestUrls = getGuestUrls();
+  if (guestUrls.length === 0) return 0;
+
+  let claimedCount = 0;
+  for (const item of guestUrls) {
+    const success = await claimGuestUrl(item.shortCode, userId);
+    if (success) claimedCount++;
+  }
+  // Clear local guest cache once migrated
+  localStorage.removeItem(GUEST_STORAGE_KEY);
+  return claimedCount;
+}
+
+/**
+ * Fetch all links for an authenticated user
+ */
+export async function getUserUrls(userId: string): Promise<ShortUrl[]> {
+  try {
+    const q = query(
+      collection(db, 'urls'),
+      where('ownerId', '==', userId)
+    );
+    const snap = await getDocs(q);
     const list: ShortUrl[] = [];
-    try {
-      const q = query(collection(db, 'urls'), where('ownerId', '==', userId));
-      const snap = await getDocs(q);
-      snap.forEach((d) => list.push(d.data() as ShortUrl));
-    } catch (e) {
-      console.warn('Firestore getUserUrls query fallback:', e);
-    }
-    try {
-      const raw = localStorage.getItem(LOCAL_URLS_KEY);
-      if (raw) {
-        const localList: ShortUrl[] = JSON.parse(raw);
-        localList.forEach((lu) => {
-          if ((lu.ownerId === userId || !lu.ownerId) && !list.some((u) => u.shortCode === lu.shortCode)) {
-            list.push(lu);
-          }
-        });
-      }
-    } catch { /* ignore */ }
-    return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  },
+    snap.forEach((d) => {
+      list.push(d.data() as ShortUrl);
+    });
 
-  async getAllClicksForUser(userId: string, userUrls?: ShortUrl[]): Promise<ClickLog[]> {
-    const urls = userUrls || (await this.getUserUrls(userId));
-    const codes = urls.map((u) => u.shortCode);
-    const allClicks: ClickLog[] = [];
+    // Client-side sort descending by creation date
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.LIST, 'urls');
+    return [];
+  }
+}
 
-    for (const code of codes) {
-      try {
-        const snap = await getDocs(collection(db, 'urls', code, 'clicks'));
-        snap.forEach((d) => allClicks.push(d.data() as ClickLog));
-      } catch { /* ignore */ }
-    }
+/**
+ * Delete a user's shortened link
+ */
+export async function deleteShortUrl(shortCode: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, 'urls', shortCode));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `urls/${shortCode}`);
+  }
+}
 
-    try {
-      const rawClicks = localStorage.getItem(LOCAL_CLICKS_KEY);
-      if (rawClicks) {
-        const localClicks: ClickLog[] = JSON.parse(rawClicks);
-        localClicks.forEach((lc) => {
-          if (codes.includes(lc.shortCode) && !allClicks.some((c) => c.id === lc.id)) allClicks.push(lc);
-        });
-      }
-    } catch { /* ignore */ }
+/**
+ * Toggle active/disabled status of a user's link
+ */
+export async function toggleUrlStatus(shortCode: string, currentStatus: 'active' | 'disabled'): Promise<void> {
+  const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
+  try {
+    await updateDoc(doc(db, 'urls', shortCode), {
+      status: newStatus,
+    });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, `urls/${shortCode}`);
+  }
+}
 
-    return allClicks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  },
+/**
+ * Extend or make permanent an existing shortened link
+ */
+export async function extendShortUrl(shortCode: string, newExpiresAt: string | null): Promise<void> {
+  try {
+    await updateDoc(doc(db, 'urls', shortCode), {
+      expiresAt: newExpiresAt,
+      status: 'active',
+    });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, `urls/${shortCode}`);
+  }
+}
 
-  async resetTelemetry(shortCode?: string, userId?: string): Promise<void> {
-    if (shortCode) {
-      try { await updateDoc(doc(db, 'urls', shortCode), { clicks: 0, uniqueVisitors: 0 }); } catch (e) { console.warn('Firestore reset error:', e); }
-      try {
-        const rawUrls = localStorage.getItem(LOCAL_URLS_KEY);
-        if (rawUrls) {
-          const list: ShortUrl[] = JSON.parse(rawUrls);
-          localStorage.setItem(LOCAL_URLS_KEY, JSON.stringify(list.map((u) => (u.shortCode === shortCode ? { ...u, clicks: 0, uniqueVisitors: 0 } : u))));
-        }
-        const rawClicks = localStorage.getItem(LOCAL_CLICKS_KEY);
-        if (rawClicks) {
-          const clicks: ClickLog[] = JSON.parse(rawClicks);
-          localStorage.setItem(LOCAL_CLICKS_KEY, JSON.stringify(clicks.filter((c) => c.shortCode !== shortCode)));
-        }
-      } catch { /* ignore */ }
-    } else if (userId) {
-      const urls = await this.getUserUrls(userId);
-      for (const u of urls) await this.resetTelemetry(u.shortCode);
-    }
-  },
+/**
+ * Fetch custom-alias links belonging to an authenticated user that are expiring within 24 hours
+ */
+export async function getExpiringCustomAliasUrls(userId: string): Promise<ShortUrl[]> {
+  try {
+    const userLinks = await getUserUrls(userId);
+    const now = Date.now();
+    const twentyFourHoursMs = 24 * 60 * 60 * 1000;
 
-  async deleteUrl(shortCode: string): Promise<void> {
-    try { await deleteDoc(doc(db, 'urls', shortCode)); } catch (e) { console.warn('Firestore delete error:', e); }
-    try {
-      const raw = localStorage.getItem(LOCAL_URLS_KEY);
-      if (raw) {
-        const list: ShortUrl[] = JSON.parse(raw);
-        localStorage.setItem(LOCAL_URLS_KEY, JSON.stringify(list.filter((u) => u.shortCode !== shortCode)));
-      }
-    } catch { /* ignore */ }
-  },
-};
+    return userLinks.filter((link) => {
+      if (!link.isCustomAlias) return false;
+      if (!link.expiresAt) return false;
 
-export const createShortUrl = urlService.createShortUrl.bind(urlService);
+      const expiryTime = new Date(link.expiresAt).getTime();
+      const diff = expiryTime - now;
+
+      return diff <= twentyFourHoursMs && diff >= -twentyFourHoursMs;
+    });
+  } catch (err) {
+    console.warn('Failed to check expiring custom alias links:', err);
+    return [];
+  }
+}
+
+/**
+ * Submit contact feedback message
+ */
+export async function submitContactFeedback(payload: {
+  name: string;
+  email: string;
+  category: string;
+  message: string;
+}): Promise<string> {
+  const id = `fb_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const record = {
+    id,
+    ...payload,
+    createdAt: new Date().toISOString(),
+  };
+  try {
+    await setDoc(doc(db, 'feedback', id), record);
+    return id;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `feedback/${id}`);
+    throw err;
+  }
+}
+
+/**
+ * Guest link management in local storage
+ */
+export function getGuestUrls(): ShortUrl[] {
+  try {
+    const raw = localStorage.getItem(GUEST_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveGuestUrl(urlRecord: ShortUrl): void {
+  try {
+    const existing = getGuestUrls();
+    const updated = [urlRecord, ...existing.filter((u) => u.id !== urlRecord.id)].slice(0, 20);
+    localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.warn('Failed to save guest link to local storage:', err);
+  }
+}
+
+export function removeGuestUrl(shortCode: string): void {
+  try {
+    const existing = getGuestUrls();
+    const updated = existing.filter((u) => u.shortCode !== shortCode);
+    localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.warn('Failed to delete guest link from local storage:', err);
+  }
+}

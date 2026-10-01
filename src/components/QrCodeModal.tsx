@@ -1,6 +1,6 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import QRCode from 'qrcode';
-import { X, Download } from 'lucide-react';
+import { X, Download, Copy, Check, ExternalLink, QrCode as QrIcon } from 'lucide-react';
 
 interface QrCodeModalProps {
   shortUrl: string;
@@ -9,45 +9,111 @@ interface QrCodeModalProps {
 }
 
 export const QrCodeModal: React.FC<QrCodeModalProps> = ({ shortUrl, title, onClose }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [dataUrl, setDataUrl] = useState<string>('');
+  const [copied, setCopied] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    if (canvasRef.current && shortUrl) {
-      QRCode.toCanvas(canvasRef.current, shortUrl, { width: 260, margin: 2, color: { dark: '#0f172a', light: '#ffffff' } }, (err) => {
-        if (!err) {
-          setDataUrl(canvasRef.current!.toDataURL('image/png'));
+    QRCode.toDataURL(
+      shortUrl,
+      {
+        width: 320,
+        margin: 2,
+        color: {
+          dark: '#1e1b4b', // deep indigo/navy
+          light: '#ffffff',
+        },
+      },
+      (err, url) => {
+        if (!err && url) {
+          setDataUrl(url);
         }
-      });
-    }
+      }
+    );
   }, [shortUrl]);
 
   const handleDownload = () => {
     if (!dataUrl) return;
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = `myshort-qr-${title || 'link'}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `qrcode-${shortUrl.split('/').pop() || 'link'}.png`;
+    a.click();
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shortUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-      <div className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-3xl p-6 shadow-2xl relative text-center">
-        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10">
-          <X className="w-4 h-4" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+      <div className="relative w-full max-w-sm bg-slate-900/90 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl border border-white/10 animate-in fade-in zoom-in-95 duration-150">
+        <button
+          id="qr-close-button"
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+          aria-label="Close"
+        >
+          <X className="w-5 h-5" />
         </button>
-        <h3 className="text-lg font-bold text-white mb-1">QR Code</h3>
-        <p className="text-xs text-slate-400 mb-4 truncate">{shortUrl}</p>
-        <div className="bg-white p-4 rounded-2xl inline-block mb-4">
-          <canvas ref={canvasRef} />
+
+        <div className="text-center mb-5">
+          <div className="w-10 h-10 mx-auto mb-3 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+            <QrIcon className="w-5 h-5" />
+          </div>
+          <h3 className="text-lg font-extrabold text-white">
+            QR Code for Link
+          </h3>
+          <p className="text-xs text-slate-400 truncate max-w-[240px] mx-auto mt-0.5">
+            {title || shortUrl}
+          </p>
         </div>
-        <button onClick={handleDownload} disabled={!dataUrl}
-          className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-1.5">
-          <Download className="w-3.5 h-3.5" />
-          <span>Download PNG</span>
-        </button>
+
+        <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-4 flex items-center justify-center mb-5">
+          {dataUrl ? (
+            <img
+              src={dataUrl}
+              alt="QR Code"
+              className="w-52 h-52 rounded-xl object-contain bg-white p-2 shadow-lg"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="w-52 h-52 flex items-center justify-center text-slate-400 text-sm">
+              Generating QR...
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <button
+              id="qr-download-button"
+              onClick={handleDownload}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-indigo-600/30 transition-all border border-indigo-400/30"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download PNG</span>
+            </button>
+            <button
+              id="qr-copy-button"
+              onClick={handleCopyLink}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 text-slate-200 font-medium rounded-xl text-xs transition-colors border border-white/10"
+            >
+              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              <span>{copied ? 'Copied' : 'Copy'}</span>
+            </button>
+          </div>
+          <div className="text-center">
+            <span className="font-mono text-xs text-indigo-400 font-semibold break-all">
+              {shortUrl}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

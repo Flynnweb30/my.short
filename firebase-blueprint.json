@@ -42,6 +42,11 @@
           "description": "Optional ISO timestamp when the link expires.",
           "maxLength": 64
         },
+        "resetAt": {
+          "type": "string",
+          "description": "Optional ISO timestamp when active counters were reset.",
+          "maxLength": 64
+        },
         "status": {
           "type": "string",
           "description": "Status of the link.",
@@ -50,6 +55,10 @@
         "clicks": {
           "type": "number",
           "description": "Total number of times the short URL was accessed."
+        },
+        "uniqueClicks": {
+          "type": "number",
+          "description": "Total number of unique visitors who accessed the short URL."
         },
         "lastAccessedAt": {
           "type": "string",
@@ -69,30 +78,72 @@
           "type": "string",
           "description": "Optional UTM campaign tag name.",
           "maxLength": 100
+        },
+        "utmSource": {
+          "type": "string",
+          "description": "Optional UTM source parameter.",
+          "maxLength": 100
+        },
+        "utmMedium": {
+          "type": "string",
+          "description": "Optional UTM medium parameter.",
+          "maxLength": 100
+        },
+        "utmContent": {
+          "type": "string",
+          "description": "Optional UTM content parameter.",
+          "maxLength": 100
+        },
+        "utmTerm": {
+          "type": "string",
+          "description": "Optional UTM keyword term parameter.",
+          "maxLength": 100
+        },
+        "utmId": {
+          "type": "string",
+          "description": "Optional UTM campaign ID parameter.",
+          "maxLength": 100
+        },
+        "domain": {
+          "type": "string",
+          "description": "Custom vanity domain hostname.",
+          "maxLength": 256
         }
       },
       "required": ["id", "shortCode", "originalUrl", "status", "clicks", "createdAt"]
     },
     "ClickLog": {
       "title": "ClickLog",
-      "description": "Individual click telemetry record storing device and browser analytics.",
+      "description": "Individual click telemetry record storing geographic, session, device, and UTM analytics.",
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique click document ID."
+          "description": "Unique click event ID."
         },
         "shortCode": {
           "type": "string",
           "description": "The shortCode associated with this click."
         },
+        "destination": {
+          "type": "string",
+          "description": "Resolved destination URL."
+        },
         "timestamp": {
           "type": "string",
           "description": "ISO timestamp when the click occurred."
         },
+        "visitorId": {
+          "type": "string",
+          "description": "Persistent visitor device identifier."
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Ephemeral browser session identifier."
+        },
         "browser": {
           "type": "string",
-          "description": "Detected web browser (e.g., Chrome, Safari, Firefox, Edge)."
+          "description": "Detected web browser."
         },
         "deviceType": {
           "type": "string",
@@ -100,7 +151,7 @@
         },
         "os": {
           "type": "string",
-          "description": "Operating system (e.g., Windows, macOS, iOS, Android, Linux)."
+          "description": "Operating system."
         },
         "referer": {
           "type": "string",
@@ -113,6 +164,68 @@
         "timeZone": {
           "type": "string",
           "description": "Client time zone identifier."
+        },
+        "country": {
+          "type": "string",
+          "description": "Resolved country name."
+        },
+        "countryCode": {
+          "type": "string",
+          "description": "Two-letter ISO country code."
+        },
+        "region": {
+          "type": "string",
+          "description": "State or administrative region."
+        },
+        "city": {
+          "type": "string",
+          "description": "City name."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Approximate geographic latitude."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Approximate geographic longitude."
+        },
+        "isApproximateLocation": {
+          "type": "boolean",
+          "description": "Whether coordinates were approximated via timezone."
+        },
+        "locationPrecision": {
+          "type": "string",
+          "description": "Status of location resolution: precise, approximate, unavailable, or unresolved.",
+          "enum": ["precise", "approximate", "unavailable", "unresolved"]
+        },
+        "ip": {
+          "type": "string",
+          "description": "Anonymized or resolved client IP address if available.",
+          "maxLength": 64
+        },
+        "utmSource": {
+          "type": "string",
+          "description": "UTM traffic source attribution."
+        },
+        "utmMedium": {
+          "type": "string",
+          "description": "UTM marketing medium attribution."
+        },
+        "utmCampaign": {
+          "type": "string",
+          "description": "UTM campaign attribution."
+        },
+        "utmContent": {
+          "type": "string",
+          "description": "UTM ad content identifier."
+        },
+        "utmTerm": {
+          "type": "string",
+          "description": "UTM search keyword term."
+        },
+        "utmId": {
+          "type": "string",
+          "description": "UTM campaign ID."
         }
       },
       "required": ["id", "shortCode", "timestamp", "browser", "deviceType", "os"]
@@ -207,6 +320,220 @@
         }
       },
       "required": ["id", "userId", "domain", "status", "verificationToken", "cnameTarget", "createdAt"]
+    },
+    "ApiToken": {
+      "title": "ApiToken",
+      "description": "Personal API authorization token for programmatic URL shortening.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Token document ID.",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID.",
+          "maxLength": 128
+        },
+        "token": {
+          "type": "string",
+          "description": "Cryptographic API key token.",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Human label for this token.",
+          "maxLength": 100
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when token was issued.",
+          "maxLength": 64
+        },
+        "lastUsedAt": {
+          "type": "string",
+          "description": "Optional ISO timestamp when token was last utilized.",
+          "maxLength": 64
+        }
+      },
+      "required": ["id", "userId", "token", "name", "createdAt"]
+    },
+    "ContactFeedback": {
+      "title": "ContactFeedback",
+      "description": "Contact form submissions and support requests.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Submission ID.",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Sender name.",
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "description": "Sender email.",
+          "maxLength": 200
+        },
+        "category": {
+          "type": "string",
+          "description": "Inquiry category.",
+          "maxLength": 64
+        },
+        "message": {
+          "type": "string",
+          "description": "Inquiry message body.",
+          "maxLength": 2000
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Submission timestamp.",
+          "maxLength": 64
+        }
+      },
+      "required": ["id", "name", "email", "category", "message", "createdAt"]
+    },
+    "WebhookEndpoint": {
+      "title": "WebhookEndpoint",
+      "description": "User-registered webhook endpoint for real-time click notification dispatch.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the webhook.",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID.",
+          "maxLength": 128
+        },
+        "url": {
+          "type": "string",
+          "description": "Destination HTTP/HTTPS webhook URL.",
+          "maxLength": 2048
+        },
+        "name": {
+          "type": "string",
+          "description": "Friendly name or description for this webhook integration.",
+          "maxLength": 128
+        },
+        "status": {
+          "type": "string",
+          "description": "Webhook operational status.",
+          "enum": ["active", "paused"]
+        },
+        "secret": {
+          "type": "string",
+          "description": "Optional HMAC signing secret for signature verification.",
+          "maxLength": 128
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Subscribed events (e.g. link.clicked)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when the webhook was registered.",
+          "maxLength": 64
+        },
+        "lastTriggeredAt": {
+          "type": "string",
+          "description": "ISO timestamp of the most recent dispatch attempt.",
+          "maxLength": 64
+        },
+        "lastStatusCode": {
+          "type": "number",
+          "description": "HTTP status code received on last delivery attempt."
+        },
+        "lastDeliveryStatus": {
+          "type": "string",
+          "description": "Delivery outcome: success, failed, or pending.",
+          "enum": ["success", "failed", "pending"]
+        }
+      },
+      "required": ["id", "userId", "url", "name", "status", "createdAt"]
+    },
+    "WebhookDeliveryLog": {
+      "title": "WebhookDeliveryLog",
+      "description": "Log of an outbound webhook delivery attempt including HTTP status, latency, request payload, and response preview for troubleshooting.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique delivery log ID.",
+          "maxLength": 128
+        },
+        "webhookId": {
+          "type": "string",
+          "description": "ID of the target webhook endpoint.",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID.",
+          "maxLength": 128
+        },
+        "url": {
+          "type": "string",
+          "description": "Destination endpoint URL.",
+          "maxLength": 2048
+        },
+        "event": {
+          "type": "string",
+          "description": "Trigger event name (e.g. link.clicked, test.ping).",
+          "maxLength": 64
+        },
+        "isTest": {
+          "type": "boolean",
+          "description": "Whether this delivery was initiated via 'Test Webhook'."
+        },
+        "statusCode": {
+          "type": "number",
+          "description": "HTTP status code returned by target server."
+        },
+        "statusText": {
+          "type": "string",
+          "description": "HTTP status text or error description.",
+          "maxLength": 256
+        },
+        "latencyMs": {
+          "type": "number",
+          "description": "Request round-trip latency in milliseconds."
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Whether delivery was considered successful (2xx status)."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO timestamp of the dispatch attempt.",
+          "maxLength": 64
+        },
+        "requestPayloadPreview": {
+          "type": "string",
+          "description": "JSON string snippet of the payload sent.",
+          "maxLength": 4096
+        },
+        "responseBodyPreview": {
+          "type": "string",
+          "description": "Snippet of the response body returned by the destination.",
+          "maxLength": 4096
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message if network failed or timed out.",
+          "maxLength": 512
+        }
+      },
+      "required": ["id", "webhookId", "userId", "url", "event", "statusCode", "statusText", "latencyMs", "success", "timestamp"]
     }
   },
   "firestore": {
@@ -225,6 +552,22 @@
     "/users/{userId}/domains/{domainId}": {
       "schema": "CustomDomain",
       "description": "User's custom domain configurations and DNS verification status."
+    },
+    "/users/{userId}/apiKeys/{keyId}": {
+      "schema": "ApiToken",
+      "description": "Personal API tokens for programmatic URL shortening access."
+    },
+    "/users/{userId}/webhooks/{webhookId}": {
+      "schema": "WebhookEndpoint",
+      "description": "User-registered webhook endpoints for real-time event dispatch on link clicks."
+    },
+    "/users/{userId}/webhookLogs/{logId}": {
+      "schema": "WebhookDeliveryLog",
+      "description": "Outbound webhook dispatch history logs for troubleshooting."
+    },
+    "/feedback/{feedbackId}": {
+      "schema": "ContactFeedback",
+      "description": "Support inquiries and feedback submitted through the contact page."
     }
   }
 }

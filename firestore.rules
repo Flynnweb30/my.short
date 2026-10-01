@@ -3,23 +3,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // -----------------------------
-    // Helper Functions
-    // -----------------------------
-
-    function isSignedIn() {
-      return request.auth != null;
+    // Default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
+    // Helper functions
     function isValidId(id) {
-      return id is string
-        && id.size() > 0
-        && id.size() <= 128
-        && id.matches('^[a-zA-Z0-9_-]+$');
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
     function incoming() {
@@ -30,357 +21,242 @@ service cloud.firestore {
       return resource.data;
     }
 
-    // -----------------------------
-    // URL Validation
-    // -----------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
 
     function isValidShortUrl(data) {
-      return data.id is string
-        && data.id.size() > 0
-        && data.id.size() <= 128
-
-        && data.shortCode is string
-        && data.shortCode.size() > 0
-        && data.shortCode.size() <= 64
-
-        && data.originalUrl is string
-        && data.originalUrl.size() > 0
-        && data.originalUrl.size() <= 2048
-
-        && data.status is string
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 64
+        && data.shortCode is string && data.shortCode.size() > 0 && data.shortCode.size() <= 64
+        && data.originalUrl is string && data.originalUrl.size() > 0 && data.originalUrl.size() <= 2048
         && data.status in ['active', 'expired', 'disabled']
-
-        && data.clicks is number
-        && data.clicks >= 0
-
-        && data.createdAt is string
-        && data.createdAt.size() <= 64
-
-        && (
-          !('ownerId' in data) ||
-          data.ownerId == null ||
-          data.ownerId == '' ||
-          (data.ownerId is string && data.ownerId.size() <= 128)
-        )
-
-        && (
-          !('title' in data) ||
-          data.title is string && data.title.size() <= 200
-        )
-
-        && (
-          !('expiresAt' in data) ||
-          data.expiresAt == null ||
-          (data.expiresAt is string && data.expiresAt.size() <= 64)
-        )
-
-        && (
-          !('lastAccessedAt' in data) ||
-          data.lastAccessedAt == null ||
-          (data.lastAccessedAt is string && data.lastAccessedAt.size() <= 64)
-        )
-
-        && (
-          !('isCustomAlias' in data) ||
-          data.isCustomAlias is bool
-        )
-
-        && (
-          !('password' in data) ||
-          data.password == null ||
-          (data.password is string && data.password.size() <= 128)
-        )
-
-        && (
-          !('utmCampaign' in data) ||
-          data.utmCampaign == null ||
-          (data.utmCampaign is string && data.utmCampaign.size() <= 100)
-        )
-
-        && (
-          !('domain' in data) ||
-          data.domain == null ||
-          (data.domain is string && data.domain.size() <= 256)
-        );
+        && data.clicks is number && data.clicks >= 0
+        && data.createdAt is string && data.createdAt.size() <= 64
+        && (!('uniqueClicks' in data) || (data.uniqueClicks is number && data.uniqueClicks >= 0))
+        && (!('ownerId' in data) || (data.ownerId is string && data.ownerId.size() <= 128))
+        && (!('title' in data) || (data.title is string && data.title.size() <= 200))
+        && (!('expiresAt' in data) || data.expiresAt == null || (data.expiresAt is string && data.expiresAt.size() <= 64))
+        && (!('resetAt' in data) || data.resetAt == null || (data.resetAt is string && data.resetAt.size() <= 64))
+        && (!('lastAccessedAt' in data) || data.lastAccessedAt == null || (data.lastAccessedAt is string && data.lastAccessedAt.size() <= 64))
+        && (!('isCustomAlias' in data) || data.isCustomAlias is bool)
+        && (!('password' in data) || data.password == null || (data.password is string && data.password.size() <= 64))
+        && (!('utmCampaign' in data) || data.utmCampaign == null || (data.utmCampaign is string && data.utmCampaign.size() <= 100))
+        && (!('utmSource' in data) || data.utmSource == null || (data.utmSource is string && data.utmSource.size() <= 100))
+        && (!('utmMedium' in data) || data.utmMedium == null || (data.utmMedium is string && data.utmMedium.size() <= 100))
+        && (!('utmContent' in data) || data.utmContent == null || (data.utmContent is string && data.utmContent.size() <= 100))
+        && (!('utmTerm' in data) || data.utmTerm == null || (data.utmTerm is string && data.utmTerm.size() <= 100))
+        && (!('utmId' in data) || data.utmId == null || (data.utmId is string && data.utmId.size() <= 100))
+        && (!('domain' in data) || data.domain == null || (data.domain is string && data.domain.size() <= 256));
     }
-
-    // -----------------------------
-    // Click Validation
-    // -----------------------------
 
     function isValidClick(data) {
-      return data.id is string
-        && data.id.size() > 0
-        && data.id.size() <= 128
-
-        && data.shortCode is string
-        && data.shortCode.size() > 0
-        && data.shortCode.size() <= 64
-
-        && data.timestamp is string
-        && data.timestamp.size() <= 64
-
-        && data.browser is string
-        && data.browser.size() <= 128
-
-        && data.deviceType is string
-        && data.deviceType.size() <= 64
-
-        && data.os is string
-        && data.os.size() <= 64;
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.shortCode is string && data.shortCode.size() > 0 && data.shortCode.size() <= 64
+        && data.timestamp is string && data.timestamp.size() <= 64
+        && data.browser is string && data.browser.size() <= 64
+        && data.deviceType is string && data.deviceType.size() <= 64
+        && data.os is string && data.os.size() <= 64
+        && (!('destination' in data) || (data.destination is string && data.destination.size() <= 2048))
+        && (!('visitorId' in data) || (data.visitorId is string && data.visitorId.size() <= 128))
+        && (!('sessionId' in data) || (data.sessionId is string && data.sessionId.size() <= 128))
+        && (!('country' in data) || (data.country is string && data.country.size() <= 100))
+        && (!('countryCode' in data) || (data.countryCode is string && data.countryCode.size() <= 16))
+        && (!('region' in data) || (data.region is string && data.region.size() <= 100))
+        && (!('city' in data) || (data.city is string && data.city.size() <= 100))
+        && (!('timeZone' in data) || data.timeZone is string && data.timeZone.size() <= 64)
+        && (!('latitude' in data) || data.latitude == null || data.latitude is number)
+        && (!('longitude' in data) || data.longitude == null || data.longitude is number)
+        && (!('locationPrecision' in data) || data.locationPrecision in ['precise', 'approximate', 'unavailable', 'unresolved'])
+        && (!('ip' in data) || data.ip == null || (data.ip is string && data.ip.size() <= 64))
+        && (!('isApproximateLocation' in data) || data.isApproximateLocation is bool)
+        && (!('utmSource' in data) || data.utmSource == null || (data.utmSource is string && data.utmSource.size() <= 100))
+        && (!('utmMedium' in data) || data.utmMedium == null || (data.utmMedium is string && data.utmMedium.size() <= 100))
+        && (!('utmCampaign' in data) || data.utmCampaign == null || (data.utmCampaign is string && data.utmCampaign.size() <= 100))
+        && (!('utmContent' in data) || data.utmContent == null || (data.utmContent is string && data.utmContent.size() <= 100))
+        && (!('utmTerm' in data) || data.utmTerm == null || (data.utmTerm is string && data.utmTerm.size() <= 100))
+        && (!('utmId' in data) || data.utmId == null || (data.utmId is string && data.utmId.size() <= 100));
     }
-
-    // -----------------------------
-    // User Validation
-    // -----------------------------
 
     function isValidUser(data) {
-      return data.id is string
-        && data.id.size() > 0
-        && data.id.size() <= 128
-
-        && data.email is string
-        && data.email.size() > 0
-        && data.email.size() <= 256
-
-        && data.createdAt is string
-        && data.createdAt.size() <= 64
-
-        && (
-          !('displayName' in data) ||
-          (data.displayName is string && data.displayName.size() <= 128)
-        )
-
-        && (
-          !('customDomain' in data) ||
-          data.customDomain == null ||
-          (data.customDomain is string && data.customDomain.size() <= 256)
-        );
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.email is string && data.email.size() > 0 && data.email.size() <= 256
+        && data.createdAt is string && data.createdAt.size() <= 64
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128))
+        && (!('customDomain' in data) || data.customDomain == null || (data.customDomain is string && data.customDomain.size() <= 256));
     }
-
-    // -----------------------------
-    // Custom Domain Validation
-    // -----------------------------
 
     function isValidDomain(data) {
-      return data.id is string
-        && data.id.size() > 0
-        && data.id.size() <= 128
-
-        && data.userId is string
-        && data.userId == request.auth.uid
-
-        && data.domain is string
-        && data.domain.size() > 0
-        && data.domain.size() <= 256
-
-        && data.status is string
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.userId is string && data.userId == request.auth.uid
+        && data.domain is string && data.domain.size() > 0 && data.domain.size() <= 256
         && data.status in ['pending', 'verified', 'failed']
-
-        && data.verificationToken is string
-        && data.verificationToken.size() <= 128
-
-        && data.cnameTarget is string
-        && data.cnameTarget.size() <= 256
-
-        && data.createdAt is string
-        && data.createdAt.size() <= 64
-
-        && (
-          !('isPrimary' in data) ||
-          data.isPrimary is bool
-        )
-
-        && (
-          !('sslStatus' in data) ||
-          data.sslStatus in ['active', 'issuing', 'pending']
-        )
-
-        && (
-          !('verifiedAt' in data) ||
-          data.verifiedAt == null ||
-          (data.verifiedAt is string && data.verifiedAt.size() <= 64)
-        );
+        && data.verificationToken is string && data.verificationToken.size() <= 128
+        && data.cnameTarget is string && data.cnameTarget.size() <= 256
+        && data.createdAt is string && data.createdAt.size() <= 64
+        && (!('isPrimary' in data) || data.isPrimary is bool)
+        && (!('sslStatus' in data) || data.sslStatus in ['active', 'issuing', 'pending'])
+        && (!('verifiedAt' in data) || data.verifiedAt == null || (data.verifiedAt is string && data.verifiedAt.size() <= 64));
     }
 
-    // =========================================================
-    // URLS
-    // =========================================================
+    function isValidApiToken(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.userId is string && data.userId == request.auth.uid
+        && data.token is string && data.token.size() > 0 && data.token.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.createdAt is string && data.createdAt.size() <= 64
+        && (!('lastUsedAt' in data) || data.lastUsedAt == null || (data.lastUsedAt is string && data.lastUsedAt.size() <= 64));
+    }
 
+    function isValidFeedback(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.email is string && data.email.size() > 0 && data.email.size() <= 200
+        && data.category is string && data.category.size() > 0 && data.category.size() <= 64
+        && data.message is string && data.message.size() > 0 && data.message.size() <= 2000
+        && data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidWebhook(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.userId is string && data.userId == request.auth.uid
+        && data.url is string && data.url.size() >= 7 && data.url.size() <= 2048
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 128
+        && data.status in ['active', 'paused']
+        && data.createdAt is string && data.createdAt.size() <= 64
+        && (!('secret' in data) || data.secret == null || (data.secret is string && data.secret.size() <= 128))
+        && (!('events' in data) || data.events is list)
+        && (!('lastTriggeredAt' in data) || data.lastTriggeredAt == null || (data.lastTriggeredAt is string && data.lastTriggeredAt.size() <= 64))
+        && (!('lastStatusCode' in data) || data.lastStatusCode == null || data.lastStatusCode is number)
+        && (!('lastDeliveryStatus' in data) || data.lastDeliveryStatus == null || (data.lastDeliveryStatus in ['success', 'failed', 'pending']));
+    }
+
+    function isValidWebhookLog(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.webhookId is string && data.webhookId.size() > 0 && data.webhookId.size() <= 128
+        && data.userId is string && data.userId == request.auth.uid
+        && data.url is string && data.url.size() >= 7 && data.url.size() <= 2048
+        && data.event is string && data.event.size() > 0 && data.event.size() <= 64
+        && (!('isTest' in data) || data.isTest is bool)
+        && data.statusCode is number
+        && data.statusText is string && data.statusText.size() <= 256
+        && data.latencyMs is number
+        && data.success is bool
+        && data.timestamp is string && data.timestamp.size() <= 64
+        && (!('requestPayloadPreview' in data) || data.requestPayloadPreview == null || (data.requestPayloadPreview is string && data.requestPayloadPreview.size() <= 8192))
+        && (!('responseBodyPreview' in data) || data.responseBodyPreview == null || (data.responseBodyPreview is string && data.responseBodyPreview.size() <= 8192))
+        && (!('error' in data) || data.error == null || (data.error is string && data.error.size() <= 512));
+    }
+
+    // URLs Collection
     match /urls/{shortCode} {
-
-      // Public short-link lookup.
-      // Required for redirecting visitors.
+      // Direct resolution: any visitor can fetch by shortCode for redirection
       allow get: if isValidId(shortCode);
 
-      // Authenticated users can query their own URLs.
-      allow list: if isSignedIn();
+      // Query Enforcer: authenticated users can only list their own URLs
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
 
-      // Guest or authenticated URL creation.
-      allow create:
-        if isValidId(shortCode)
-        && isValidShortUrl(incoming())
+      // Create: Guests or Logged-in users
+      allow create: if isValidId(shortCode) 
+        && isValidShortUrl(incoming()) 
         && incoming().id == shortCode
         && incoming().shortCode == shortCode
         && (
-          (
-            isSignedIn()
-            && incoming().ownerId == request.auth.uid
-          )
-          ||
-          (
-            !isSignedIn()
-            && (
-              !('ownerId' in incoming())
-              || incoming().ownerId == null
-              || incoming().ownerId == ''
-            )
-          )
+          (isSignedIn() && incoming().ownerId == request.auth.uid) ||
+          (!isSignedIn() && (!('ownerId' in incoming()) || incoming().ownerId == '' || incoming().ownerId == null))
         );
 
-      // URL updates.
-      allow update:
-        if isValidId(shortCode)
+      // Updates: Click tracking (anyone) OR Link management (owner only)
+      allow update: if isValidId(shortCode)
         && isValidShortUrl(incoming())
         && (
-          // ---------------------------------
-          // Public click counter update
-          // ---------------------------------
+          // Action 1: Increment clicks / telemetry on redirect
           (
-            incoming().diff(existing()).affectedKeys()
-              .hasOnly(['clicks', 'lastAccessedAt'])
-
-            && incoming().clicks == existing().clicks + 1
+            incoming().diff(existing()).affectedKeys().hasOnly(['clicks', 'uniqueClicks', 'lastAccessedAt'])
+            && incoming().clicks >= existing().clicks
             && incoming().originalUrl == existing().originalUrl
-            && incoming().shortCode == existing().shortCode
-            && incoming().id == existing().id
             && incoming().status == existing().status
           )
-
           ||
-
-          // ---------------------------------
-          // Owner management update
-          // ---------------------------------
+          // Action 2: Owner updates status, title, expiresAt, password, domain, or resets active counters (resetAt)
           (
-            isSignedIn()
+            isSignedIn() 
             && existing().ownerId == request.auth.uid
             && incoming().ownerId == existing().ownerId
-
-            && incoming().diff(existing()).affectedKeys()
-              .hasOnly([
-                'status',
-                'title',
-                'expiresAt',
-                'password'
-              ])
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'title', 'expiresAt', 'password', 'domain', 'resetAt'])
           )
-
           ||
-
-          // ---------------------------------
-          // Claim guest URL
-          // ---------------------------------
+          // Action 3: Newly signed-up user claims an unowned guest link to save it permanently
           (
             isSignedIn()
-
-            && (
-              !('ownerId' in existing())
-              || existing().ownerId == null
-              || existing().ownerId == ''
-            )
-
+            && (!('ownerId' in existing()) || existing().ownerId == '' || existing().ownerId == null)
             && incoming().ownerId == request.auth.uid
-
-            && incoming().diff(existing()).affectedKeys()
-              .hasOnly([
-                'ownerId',
-                'expiresAt',
-                'title'
-              ])
+            && incoming().diff(existing()).affectedKeys().hasOnly(['ownerId', 'expiresAt', 'title'])
           )
         );
 
-      // Only the owner can delete.
-      allow delete:
-        if isSignedIn()
-        && existing().ownerId == request.auth.uid;
+      // Delete: Only owner can delete their link
+      allow delete: if isValidId(shortCode) && isSignedIn() && existing().ownerId == request.auth.uid;
 
-
-      // =======================================================
-      // CLICK TELEMETRY
-      // =======================================================
-
+      // Click telemetry subcollection
       match /clicks/{clickId} {
-
-        // Anyone can record a click.
-        allow create:
-          if isValidId(clickId)
-          && isValidClick(incoming())
-          && incoming().shortCode == shortCode;
-
-        // Only URL owner can view/delete analytics.
-        allow read, delete:
-          if isSignedIn()
-          && get(
-            /databases/$(database)/documents/urls/$(shortCode)
-          ).data.ownerId == request.auth.uid;
+        allow create: if isValidId(clickId) && isValidClick(incoming());
+        allow read, delete: if isSignedIn() && (
+          get(/databases/$(database)/documents/urls/$(shortCode)).data.ownerId == request.auth.uid
+        );
       }
     }
 
-
-    // =========================================================
-    // USERS
-    // =========================================================
-
+    // Users Collection
     match /users/{userId} {
-
-      // User can read/update/delete their own profile.
-      allow get, update, delete:
-        if isOwner(userId)
-        && isValidId(userId);
-
-      // User can create their own profile.
-      allow create:
-        if isOwner(userId)
-        && isValidId(userId)
-        && isValidUser(incoming())
-        && incoming().id == userId;
-
-
-      // Do not expose the users collection to arbitrary queries.
+      allow get, update, delete: if isValidId(userId) && isOwner(userId);
+      allow create: if isValidId(userId) && isOwner(userId) && isValidUser(incoming());
       allow list: if false;
 
-
-      // =======================================================
-      // CUSTOM DOMAINS
-      // =======================================================
-
+      // Custom Domains Subcollection
       match /domains/{domainId} {
-
-        // Owner can read/delete their domains.
-        allow read, delete:
-          if isOwner(userId)
-          && isValidId(userId)
-          && isValidId(domainId);
-
-        // Owner can create/update their domains.
-        allow create, update:
-          if isOwner(userId)
-          && isValidId(userId)
-          && isValidId(domainId)
+        allow read, delete: if isValidId(userId) && isOwner(userId);
+        allow create, update: if isValidId(userId) 
+          && isOwner(userId) 
           && isValidDomain(incoming())
+          && incoming().userId == userId;
+      }
+
+      // Personal API Tokens Subcollection
+      match /apiKeys/{keyId} {
+        allow read, delete: if isValidId(userId) && isOwner(userId);
+        allow create, update: if isValidId(userId)
+          && isOwner(userId)
+          && isValidApiToken(incoming())
+          && incoming().userId == userId;
+      }
+
+      // Webhooks Subcollection
+      match /webhooks/{webhookId} {
+        allow read, delete: if isValidId(userId) && isOwner(userId);
+        allow create, update: if isValidId(userId)
+          && isOwner(userId)
+          && isValidWebhook(incoming())
+          && incoming().userId == userId;
+      }
+
+      // Webhook Delivery Logs Subcollection
+      match /webhookLogs/{logId} {
+        allow read, delete: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId)
+          && isOwner(userId)
+          && isValidWebhookLog(incoming())
           && incoming().userId == userId;
       }
     }
 
-
-    // =========================================================
-    // DEFAULT DENY
-    // =========================================================
-
-    match /{document=**} {
-      allow read, write: if false;
+    // Contact Feedback Submissions
+    match /feedback/{feedbackId} {
+      allow create: if isValidId(feedbackId) && isValidFeedback(incoming());
+      allow read, update, delete: if false;
     }
   }
 }

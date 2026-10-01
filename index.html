@@ -1,41 +1,73 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>my.short — High-Performance URL Shortener &amp; Real-Time Telemetry</title>
-    <meta name="description" content="Production-ready URL shortener with real-time visitor telemetry, interactive world click maps, branded vanity domains, and UTM campaign attribution." />
-    <meta name="keywords" content="url shortener, link shortener, click telemetry, analytics, utm builder, custom domain, branded links" />
-    <meta name="author" content="my.short" />
-    <link rel="canonical" href="https://my.short" />
-
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>my.short - Fast URL Shortener &amp; Real-Time UTM Telemetry</title>
+    <meta
+      name="description"
+      content="High-speed URL shortener with real-time UTM attribution, device &amp; geographic telemetry, interactive world map, custom domains, and API token access."
+    />
+    <link rel="canonical" href="https://my.short/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="my.short - Fast URL Shortener &amp; Real-Time UTM Telemetry" />
+    <meta
+      property="og:description"
+      content="High-speed URL shortener with real-time UTM attribution, device &amp; geographic telemetry, interactive world map, custom domains, and API token access."
+    />
+    <meta property="og:site_name" content="my.short" />
+    <meta property="og:url" content="https://my.short/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="my.short - Fast URL Shortener &amp; Real-Time UTM Telemetry" />
+    <meta
+      name="twitter:description"
+      content="High-speed URL shortener with real-time UTM attribution, device &amp; geographic telemetry, interactive world map, custom domains, and API token access."
+    />
     <meta name="theme-color" content="#0F172A" />
 
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://my.short" />
-    <meta property="og:title" content="my.short — URL Shortener &amp; Real-Time Telemetry" />
-    <meta property="og:description" content="Shorten URLs, track real visitor clicks, map global origins, and build structured UTM marketing campaigns." />
-    <meta property="og:image" content="/og-image.png" />
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="my.short — URL Shortener &amp; Real-Time Telemetry" />
-    <meta name="twitter:description" content="Shorten URLs, track real visitor clicks, map global origins, and build structured UTM marketing campaigns." />
-    <meta name="twitter:image" content="/og-image.png" />
-
+    <!-- Schema.org WebApplication JSON-LD -->
     <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "my.short",
-        "url": "https://my.short",
-        "description": "High-performance URL shortener with real-time visitor telemetry, world click maps, custom domains, and UTM attribution.",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "All"
-      }
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "my.short",
+      "url": "https://my.short/",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "All",
+      "description": "Fast, production-grade URL shortener with comprehensive telemetry, UTM attribution builder, interactive world map, and vanity domain support.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Instant URL shortening with custom aliases",
+        "Comprehensive UTM campaign builder",
+        "Unique and Total clicks telemetry tracking",
+        "Interactive global telemetry world map",
+        "Device, OS, browser, and timezone attribution",
+        "Custom vanity domain verification with automated SSL",
+        "Personal API tokens for programmatic shortening"
+      ]
+    }
+    </script>
+
+    <script>
+      // Gracefully prevent benign Vite WebSocket disconnect warnings in sandboxed preview
+      window.addEventListener('unhandledrejection', function (event) {
+        if (
+          event &&
+          event.reason &&
+          (String(event.reason).includes('WebSocket') ||
+            String(event.reason?.message).includes('WebSocket'))
+        ) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      });
     </script>
   </head>
-  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-indigo-600 selection:text-white">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
