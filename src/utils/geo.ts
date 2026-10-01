@@ -1,7 +1,5 @@
 /**
  * Geolocation & Timezone Resolution Engine for Real Live Telemetry
- * Resolves location strictly from legitimate tracking events using verified IP geolocation
- * and authentic IANA timezones. Does NOT use fake locations, mock coordinates, or simulated cities.
  */
 
 export interface GeoLocationResult {
@@ -16,11 +14,7 @@ export interface GeoLocationResult {
   ip?: string;
 }
 
-/**
- * Resolve authentic live geolocation and timezone from incoming request / client IP
- */
 export async function resolveLiveEventGeo(): Promise<GeoLocationResult> {
-  // Capture verified client browser timezone if available
   let clientTz = 'Unknown';
   try {
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -31,10 +25,10 @@ export async function resolveLiveEventGeo(): Promise<GeoLocationResult> {
     // fallback
   }
 
-  // 1. Attempt lookup via backend API endpoint (/api/geo/lookup)
+  // 1. Attempt lookup via backend API endpoint if running with Express server
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 1800);
 
     const res = await fetch('/api/geo/lookup', {
       signal: controller.signal,
@@ -42,7 +36,8 @@ export async function resolveLiveEventGeo(): Promise<GeoLocationResult> {
     });
     clearTimeout(timeoutId);
 
-    if (res.ok) {
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
       if (
         data &&
@@ -66,10 +61,10 @@ export async function resolveLiveEventGeo(): Promise<GeoLocationResult> {
       }
     }
   } catch {
-    // Backend lookup failed or timed out
+    // Backend API not present (e.g. running on Static Site CDN)
   }
 
-  // 2. Direct client fallback via free public IP geolocation endpoint
+  // 2. Direct client fallback via public geolocation endpoint
   if (typeof window !== 'undefined') {
     try {
       const controller = new AbortController();
@@ -105,12 +100,11 @@ export async function resolveLiveEventGeo(): Promise<GeoLocationResult> {
         }
       }
     } catch {
-      // Direct client lookup failed or blocked by content blocker
+      // Content blocker or offline
     }
   }
 
-  // 3. Fallback when geographic coordinates cannot be resolved
-  // Display Unknown/Unavailable rather than inventing synthetic coordinates or fake cities
+  // 3. Fallback when coordinates cannot be retrieved
   return {
     country: 'Unknown',
     countryCode: 'UN',
@@ -123,10 +117,6 @@ export async function resolveLiveEventGeo(): Promise<GeoLocationResult> {
   };
 }
 
-/**
- * Compute authentic live local time for a verified IANA timezone.
- * Returns "Unavailable" if the timezone is missing or unresolved.
- */
 export function getLiveLocalTime(timeZone?: string | null): string {
   if (!timeZone || timeZone === 'Unknown') {
     return 'Unavailable';
